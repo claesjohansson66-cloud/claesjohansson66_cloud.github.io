@@ -32,7 +32,7 @@
 }
 *,*::before,*::after{box-sizing:inherit}
 html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.5;display:flex;justify-content:center;padding:clamp(20px,6vw,64px) 20px}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.5;display:flex;justify-content:center;padding:clamp(20px,6vw,64px) 20px 110px}
 main{width:100%;max-width:520px}
 h1{font-size:clamp(2.2rem,8vw,3.4rem);line-height:1.02;font-weight:800;letter-spacing:-.03em;margin:0 0 12px}
 .lead{color:var(--muted);margin:0 0 28px;max-width:40ch}
@@ -91,6 +91,15 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
 .statusnamn{font-size:1.7rem;font-weight:800;line-height:1.15}
 .statussedan{color:var(--muted);font-size:.95rem}
 .algknappar button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+dl.detail a{color:var(--accent);font-weight:600}
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;min-height:52px;padding:0 22px;border-radius:26px;background:var(--ink);color:var(--bg);border:0;box-shadow:0 2px 10px rgba(0,0,0,.3);font-weight:800}
+.fab:hover{background:var(--ink);filter:brightness(1.15)}
+.overlay{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center}
+.panel{background:var(--surface);color:var(--ink);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px))}
+@media (min-width:600px){.overlay{align-items:center}.panel{border-radius:16px}}
+.panel h2{margin:0;font-size:1.25rem}
+.panel h3{margin:0 0 8px;font-size:1.05rem}
+.anm-ny{margin:0 0 20px;padding:14px 16px;border:1.5px solid var(--accent);border-radius:10px}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -116,6 +125,7 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
       <div class="actions" id="detalj-knappar">
         <button type="button" class="primary grow" id="sok">Släpp</button>
         <button type="button" class="grow" id="alg-knapp" hidden>Älgarbete</button>
+        <button type="button" id="info-knapp">Provinformation</button>
         <button type="button" id="redigera">Redigera</button>
         <button type="button" class="danger" id="ta-bort">Ta bort</button>
         <button type="button" id="tillbaka1">Tillbaka till listan</button>
@@ -174,7 +184,7 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
       <ul class="turer" id="skall-lista"></ul>
       <h2 class="sub">Upptag</h2>
       <ul class="turer" id="upptag-lista"></ul>
-      <div class="actions"><button type="button" id="alg-tillbaka">Tillbaka till provet</button></div>
+      <div class="actions"><button type="button" id="alg-info">Provinformation</button><button type="button" id="alg-tillbaka">Tillbaka till provet</button></div>
     </section>
 
     <!-- Traktbyte -->
@@ -258,6 +268,18 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
       </div>
     </section>
 
+    <!-- Provinformation -->
+    <section id="v-info" hidden>
+      <form id="info-f" novalidate>
+        <div id="info-fields"></div>
+        <p class="err" id="i-err" hidden></p>
+        <div class="actions">
+          <button type="submit" class="primary grow">Spara provinformation</button>
+          <button type="button" id="i-tillbaka">Tillbaka utan att spara</button>
+        </div>
+      </form>
+    </section>
+
     <!-- Formulär -->
     <section id="v-form" hidden>
       <form id="f" novalidate>
@@ -275,6 +297,15 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
           <label for="chip">Chipnummer <span class="hint">Hela numret eller bara de sista siffrorna</span></label>
           <input id="chip" type="text" inputmode="numeric" autocomplete="off" maxlength="15">
           <p class="err" id="e-chip" hidden></p>
+        </div>
+        <div class="field">
+          <label for="agare">Ägare, namn</label>
+          <input id="agare" type="text" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="tel">Ägare, telefonnummer</label>
+          <input id="tel" type="tel" inputmode="tel" autocomplete="off">
+          <p class="err" id="e-tel" hidden></p>
         </div>
         <div class="field">
           <label for="plats">Provplats</label>
@@ -312,16 +343,37 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
   </div>
 </main>
 
+<button type="button" class="fab" id="anm-knapp">Anteckning</button>
+
+<div class="overlay" id="anm" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="anm-rubrik">
+    <div class="top"><h2 id="anm-rubrik">Anteckningar</h2><button type="button" id="anm-stang">Stäng</button></div>
+    <p class="hint" id="anm-kontext" style="margin:0 0 16px"></p>
+    <div class="anm-ny">
+      <h3 id="anm-ny-tid"></h3>
+      <div class="field">
+        <label for="anm-text" class="hint" style="margin:0 0 6px">Ny anteckning</label>
+        <textarea id="anm-text" rows="4"></textarea>
+      </div>
+      <p class="err" id="anm-err" hidden></p>
+      <button type="button" class="primary" id="anm-spara" style="width:100%">Spara anteckning</button>
+    </div>
+    <ul class="turer" id="anm-lista"></ul>
+    <p class="empty" id="anm-tom">Inga anteckningar ännu.</p>
+  </div>
+</div>
+
+
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
-  var KEY='hundprov:v1';
+  var KEY='hundprov:v1',KEY2='hundprov:allm',allm=[];
   var entries=[];         // {id (= provdatum), namn, reg, chip, datum, tid, turer:[{id,ut,in,str,avs}]}
   var storageOK=true;
   var current=null, editingId=null, editingTur=null, editingSlapp=false, editingAlg=null, timerId=null;
 
-  var ids=['namn','reg','chip','datum','tid'];
-  var msgs={namn:'Ange hundens namn.',reg:'Ange registreringsnummer.',chip:'Ange minst en siffra i chipnumret (högst 15).',datum:'Välj ett provdatum.',tid:'Välj en tid.'};
+  var ids=['namn','reg','chip','tel','datum','tid'];
+  var msgs={namn:'Ange hundens namn.',reg:'Ange registreringsnummer.',chip:'Ange minst en siffra i chipnumret (högst 15).',tel:'Ange ett giltigt telefonnummer, till exempel 070-123 45 67.',datum:'Välj ett provdatum.',tid:'Välj en tid.'};
   var p=function(x){return String(x).padStart(2,'0')};
   function mk(tag,attrs,text){var e=document.createElement(tag);if(attrs)for(var k in attrs){if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k])}if(text!=null)e.textContent=text;return e}
 
@@ -342,6 +394,7 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
   function load(){
     try{var raw=localStorage.getItem(KEY);entries=raw?JSON.parse(raw):[];if(!Array.isArray(entries))entries=[]}
     catch(e){entries=[];storageOK=false}
+    try{var r2=localStorage.getItem(KEY2);allm=r2?JSON.parse(r2):[];if(!Array.isArray(allm))allm=[]}catch(e){allm=[]}
     entries.forEach(function(e){
       if(!Array.isArray(e.turer))e.turer=[];
       var seen={};
@@ -349,7 +402,7 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
     });
   }
   function persist(){
-    try{localStorage.setItem(KEY,JSON.stringify(entries));return true}
+    try{localStorage.setItem(KEY,JSON.stringify(entries));localStorage.setItem(KEY2,JSON.stringify(allm));return true}
     catch(e){storageOK=false;showNotice('Det gick inte att spara i telefonen. Uppgifterna finns kvar tills sidan stängs.');return false}
   }
   function showNotice(t){$('notis').textContent=t;$('notis').hidden=!t}
@@ -363,12 +416,12 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
 
   /* ---------- Vyer ---------- */
   function view(name){
-    ['lista','detalj','form','sok','upptag','alg','nyup','tb'].forEach(function(v){$('v-'+v).hidden=(v!==name)});
+    ['lista','detalj','form','sok','upptag','alg','nyup','tb','info'].forEach(function(v){$('v-'+v).hidden=(v!==name)});
     var sub=current?current.namn+' · '+fmtDatum(current.datum):'';
     var t={lista:['Mina prov','Välj ett prov i listan för att se uppgifterna.'],
            detalj:[current?current.namn:'Prov',current?fmtDatum(current.datum)+' kl. '+current.tid:''],
            form:[editingId?'Redigera prov':'Nytt prov','Fyll i uppgifterna om hunden och välj provdatum och tid.'],
-           sok:['Sök',sub],upptag:['Upptag',sub],alg:['Älgarbete',sub],nyup:['Nytt upptag',sub],tb:['Traktbyte',sub]}[name];
+           sok:['Sök',sub],upptag:['Upptag',sub],alg:['Älgarbete',sub],nyup:['Nytt upptag',sub],tb:['Traktbyte',sub],info:['Provinformation',sub]}[name];
     $('rubrik').textContent=t[0];$('ingress').textContent=t[1];
     $('bekrafta').hidden=true;$('detalj-knappar').hidden=false;
     if(timerId){clearInterval(timerId);timerId=null}
@@ -394,8 +447,11 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
   function renderDetail(){
     var dl=$('detalj');dl.textContent='';
     $('sok').textContent=current.slapp?'Till sök':'Släpp';$('alg-knapp').hidden=!current.upptag;
-    [['Namn',current.namn],['Registreringsnummer',current.reg],['Chipnummer',current.chip],['Provdatum',fmtDatum(current.datum)],['Tid',current.tid],['Provplats',current.plats||'–'],['Hundpejl',current.pejl||'–'],['ID kontrollerat',current.idk?'Ja':'Nej'],['Släpptid',current.slapp?fmtTid(current.slapp):'–'],['Inkallning sök',current.inkallning||'–'],['Sökturer',String(current.turer.length)]].concat(current.upptag?[['Älgarbete start',fmtTid(current.upptag.tid)],['Älgarbetets status',(algCur()||{}).typ||'–'],['Provet slutar',fmtTid(algSlut(current))]]:[]).forEach(function(r){
-      dl.appendChild(mk('dt',null,r[0]));dl.appendChild(mk('dd',null,r[1]));
+    [['Namn',current.namn],['Registreringsnummer',current.reg],['Chipnummer',current.chip],['Ägare',current.agare||'–'],['Telefon',current.tel||'–',current.tel?'tel:'+current.tel.replace(/[^\d+]/g,''):null],['Provdatum',fmtDatum(current.datum)],['Tid',current.tid],['Provplats',current.plats||'–'],['Hundpejl',current.pejl||'–'],['ID kontrollerat',current.idk?'Ja':'Nej'],['Släpptid',current.slapp?fmtTid(current.slapp):'–'],['Inkallning sök',current.inkallning||'–'],['Provinformation',infoFilled(current)?'Ifylld':'Ej ifylld'],['Anteckningar',String((current.anteckningar||[]).length)],['Sökturer',String(current.turer.length)]].concat(current.upptag?[['Älgarbete start',fmtTid(current.upptag.tid)],['Älgarbetets status',(algCur()||{}).typ||'–'],['Provet slutar',fmtTid(algSlut(current))]]:[]).forEach(function(r){
+      dl.appendChild(mk('dt',null,r[0]));
+      var dd=mk('dd',null,r[1]);
+      if(r[2]){dd.textContent='';dd.appendChild(mk('a',{href:r[2]},r[1]))}
+      dl.appendChild(dd);
     });
   }
   function openEntry(id){
@@ -410,12 +466,12 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
     editingId=e?e.id:null;clearErrors();
     var n=new Date();
     $('namn').value=e?e.namn:'';$('reg').value=e?e.reg:'';$('chip').value=e?e.chip:'';
-    $('plats').value=e&&e.plats?e.plats:'';$('pejl').value=e&&e.pejl?e.pejl:'';$('idk').checked=!!(e&&e.idk);$('slapp').value=e&&e.slapp?fmtTid(e.slapp):'';
+    $('agare').value=e&&e.agare?e.agare:'';$('tel').value=e&&e.tel?e.tel:'';$('plats').value=e&&e.plats?e.plats:'';$('pejl').value=e&&e.pejl?e.pejl:'';$('idk').checked=!!(e&&e.idk);$('slapp').value=e&&e.slapp?fmtTid(e.slapp):'';
     $('datum').value=e?e.datum:n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
     $('tid').value=e?e.tid:p(n.getHours())+':'+p(n.getMinutes());
     view('form');$('namn').focus();
   }
-  function valid(id,v){v=v.trim();return id==='chip'?/^\d{1,15}$/.test(v):v.length>0}
+  function valid(id,v){v=v.trim();if(id==='tel')return v===''||(!/[^\d\s+\-()]/.test(v)&&v.replace(/\D/g,'').length>=5);return id==='chip'?/^\d{1,15}$/.test(v):v.length>0}
   function showErr(id,ok,text){
     $(id).setAttribute('aria-invalid',ok?'false':'true');
     var e=$('e-'+id);e.hidden=ok;e.textContent=ok?'':(text||msgs[id]);
@@ -438,7 +494,7 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
     if(!ok){$(first).focus();return}
     var old=entries.filter(function(d){return d.id===editingId})[0];
     var slv=$('slapp').value.trim(),sl=slv?parseT(slv,new Date($('datum').value+'T12:00:00').getTime()):null;
-    var data={id:$('datum').value,namn:$('namn').value.trim(),reg:$('reg').value.trim(),chip:$('chip').value.trim(),datum:$('datum').value,tid:$('tid').value,plats:$('plats').value.trim(),pejl:$('pejl').value.trim(),idk:$('idk').checked,slapp:sl,inkallning:old?(old.inkallning||''):'',upptag:old?(old.upptag||null):null,alg:old?(old.alg||[]):[],skall:old?(old.skall||[]):[],nyaUpptag:old?(old.nyaUpptag||[]):[],kontakt:old?(old.kontakt||[]):[],inkall:old?(old.inkall||[]):[],stotning:old?(old.stotning||[]):[],turer:old?old.turer:[]};
+    var data={id:$('datum').value,namn:$('namn').value.trim(),reg:$('reg').value.trim(),chip:$('chip').value.trim(),datum:$('datum').value,tid:$('tid').value,agare:$('agare').value.trim(),tel:$('tel').value.trim(),plats:$('plats').value.trim(),pejl:$('pejl').value.trim(),idk:$('idk').checked,info:old?(old.info||null):null,anteckningar:old?(old.anteckningar||[]):[],slapp:sl,inkallning:old?(old.inkallning||''):'',upptag:old?(old.upptag||null):null,alg:old?(old.alg||[]):[],skall:old?(old.skall||[]):[],nyaUpptag:old?(old.nyaUpptag||[]):[],kontakt:old?(old.kontakt||[]):[],inkall:old?(old.inkall||[]):[],stotning:old?(old.stotning||[]):[],turer:old?old.turer:[]};
     entries=entries.filter(function(d){return d.id!==editingId&&d.id!==data.id}).concat([data]);
     persist();
     current=data;editingId=null;renderList();renderDetail();view('detalj');
@@ -960,11 +1016,152 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
   $('alg-knapp').addEventListener('click',openAlg);
   $('alg-tillbaka').addEventListener('click',function(){editingAlg=null;renderDetail();view('detalj')});
 
+  /* ---------- Anteckningar ---------- */
+  var anmOpenedAt=0,anmCtx=null,anmFocus=null,anmEditId=null;
+  function fmtDT(ms){var d=new Date(rnd(ms));return d.toLocaleDateString('sv-SE',{day:'numeric',month:'long',year:'numeric'})+' kl. '+p(d.getHours())+':'+p(d.getMinutes())}
+  function toLocalInput(ms){var d=new Date(rnd(ms));return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())}
+  function anmArr(){if(current){if(!Array.isArray(current.anteckningar))current.anteckningar=[];return current.anteckningar}return allm}
+  function anmSet(list){if(current)current.anteckningar=list;else allm=list}
+  function openAnm(){
+    anmFocus=document.activeElement;
+    var ctx=current?current.id:'';
+    if(!$('anm-text').value.trim()||anmCtx!==ctx){$('anm-text').value='';anmOpenedAt=Date.now()}
+    anmCtx=ctx;anmEditId=null;
+    $('anm-kontext').textContent=current?'Gäller provet '+current.namn+' · '+fmtDatum(current.datum):'Inget prov är öppet. Anteckningen sparas som en allmän anteckning.';
+    $('anm-ny-tid').textContent=fmtDT(anmOpenedAt);
+    $('anm-err').hidden=true;
+    $('anm').hidden=false;
+    document.querySelector('main').inert=true;$('anm-knapp').inert=true;
+    renderAnm();$('anm-text').focus();
+  }
+  function closeAnm(){
+    $('anm').hidden=true;
+    document.querySelector('main').inert=false;$('anm-knapp').inert=false;
+    if(anmFocus&&anmFocus.focus)anmFocus.focus();
+  }
+  function renderAnm(){
+    var l=anmArr().slice().sort(function(a,b){return b.tid-a.tid});
+    $('anm-tom').hidden=l.length>0;
+    var ul=$('anm-lista');ul.textContent='';
+    l.forEach(function(n){
+      var li=mk('li');
+      li.appendChild(mk('h3',null,fmtDT(n.tid)));
+      if(anmEditId===n.id){li.appendChild(anmEditForm(n))}
+      else{
+        li.appendChild(mk('p',{class:'notering'},n.text));
+        var bt=mk('button',{type:'button'},'Redigera');
+        bt.addEventListener('click',function(){anmEditId=n.id;renderAnm()});
+        li.appendChild(bt);
+      }
+      ul.appendChild(li);
+    });
+  }
+  function anmEditForm(n){
+    var f=mk('div');
+    f.appendChild(field('Tidpunkt',mk('input',{id:'anm-e-tid',type:'datetime-local',value:toLocalInput(n.tid)})));
+    f.appendChild(field('Anteckning',mk('textarea',{id:'anm-e-text',rows:'4'},n.text)));
+    var err=mk('p',{class:'err',hidden:''});f.appendChild(err);
+    var a=mk('div',{class:'actions'});
+    var sv=mk('button',{type:'button',class:'primary grow'},'Spara');
+    var av=mk('button',{type:'button'},'Avbryt');
+    var rm=mk('button',{type:'button',class:'danger'},'Ta bort');
+    var sure=false;
+    function fail(m){err.textContent=m;err.hidden=false}
+    sv.addEventListener('click',function(){
+      var v=$('anm-e-tid').value,ms=v?new Date(v).getTime():NaN;
+      if(isNaN(ms))return fail('Ange datum och tid.');
+      var t=$('anm-e-text').value.trim();
+      if(!t)return fail('Anteckningen kan inte vara tom. Ta bort den i stället.');
+      n.tid=rnd(ms);n.text=t;persist();anmEditId=null;renderAnm();
+    });
+    av.addEventListener('click',function(){anmEditId=null;renderAnm()});
+    rm.addEventListener('click',function(){
+      if(!sure){sure=true;rm.textContent='Bekräfta borttagning';return}
+      anmSet(anmArr().filter(function(x){return x.id!==n.id}));
+      persist();anmEditId=null;renderAnm();
+      if(current&&!$('v-detalj').hidden)renderDetail();
+    });
+    a.appendChild(sv);a.appendChild(av);a.appendChild(rm);f.appendChild(a);
+    return f;
+  }
+  $('anm-knapp').addEventListener('click',openAnm);
+  $('anm-text').addEventListener('input',function(){$('anm-err').hidden=true});
+  $('anm-stang').addEventListener('click',closeAnm);
+  $('anm').addEventListener('click',function(e){if(e.target===$('anm'))closeAnm()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('anm').hidden)closeAnm()});
+  $('anm-spara').addEventListener('click',function(){
+    var t=$('anm-text').value.trim(),err=$('anm-err');
+    if(!t){err.textContent='Skriv en anteckning först.';err.hidden=false;$('anm-text').focus();return}
+    err.hidden=true;
+    anmArr().push({id:'x'+Date.now()+Math.floor(Math.random()*1000),tid:rnd(anmOpenedAt),text:t});
+    persist();
+    $('anm-text').value='';anmOpenedAt=Date.now();$('anm-ny-tid').textContent=fmtDT(anmOpenedAt);
+    renderAnm();
+    if(current&&!$('v-detalj').hidden)renderDetail();
+  });
+
+  /* ---------- Provinformation ---------- */
+  var infoBack='detalj';
+  var INFO=[
+    {k:'algtyp',label:'Typ av älgar',t:'sel',opts:ELG},
+    {k:'uppf',label:'Uppträdande ståndarbete',t:'area'},
+    {k:'pos',label:'Position ståndarbete',t:'text'},
+    {k:'avst',label:'Avstånd till älg',t:'int',hint:'I meter'},
+    {k:'vader',label:'Väderlek',t:'text'},
+    {k:'temp',label:'Temperatur',t:'num',hint:'I °C. Skriv minus för minusgrader.'},
+    {k:'vind',label:'Vind',t:'text'},
+    {k:'mark',label:'Snö/barmark',t:'sel',opts:['Snö','Barmark']},
+    {k:'skrap',label:'Skrapighet',t:'text'},
+    {k:'vatten',label:'Förföljer över vatten',t:'int',hint:'Ange antal meter'},
+    {k:'skaller',label:'Skäller även',t:'text'},
+    {k:'motor',label:'Motorfordon',t:'sel',opts:['Ja','Nej']},
+    {k:'maxavst',label:'Största avstånd mellan släpp och avslut',t:'int',hint:'I meter'}
+  ];
+  function infoFilled(e){return !!(e.info&&Object.keys(e.info).some(function(k){return e.info[k]!==''&&e.info[k]!=null}))}
+  function openInfo(from){
+    infoBack=from;
+    var box=$('info-fields');box.textContent='';
+    var v=current.info||{};
+    INFO.forEach(function(fd){
+      var val=v[fd.k],id='if-'+fd.k,el;
+      if(fd.t==='sel')el=selectEl(id,fd.opts,val||'');
+      else if(fd.t==='area')el=mk('textarea',{id:id,rows:'2'},val||'');
+      else el=mk('input',{id:id,type:'text',autocomplete:'off',inputmode:fd.t==='int'?'numeric':'text',value:(val!=null&&val!=='')?String(val).replace('.',','):''});
+      box.appendChild(field(fd.label,el,fd.hint));
+    });
+    $('i-err').hidden=true;
+    view('info');
+  }
+  function infoBackTo(){if(infoBack==='alg')openAlg();else{renderDetail();view('detalj')}}
+  $('info-f').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var out={};
+    function fail(fd,m){var e=$('i-err');e.textContent=m;e.hidden=false;$('if-'+fd.k).focus()}
+    for(var i=0;i<INFO.length;i++){
+      var fd=INFO[i],v=$('if-'+fd.k).value.trim();
+      if(fd.t==='int'){
+        var n=parseNum(v);
+        if(n.bad||(n.v!=null&&n.v%1!==0))return fail(fd,fd.label+' anges i hela meter.');
+        out[fd.k]=n.v;
+      }else if(fd.t==='num'){
+        var s=v.replace('−','-').replace(',','.');
+        if(s==='')out[fd.k]=null;
+        else if(!/^-?\d+(\.\d+)?$/.test(s))return fail(fd,'Temperaturen ska vara ett tal, till exempel -5 eller 3,5.');
+        else out[fd.k]=parseFloat(s);
+      }else out[fd.k]=v;
+    }
+    current.info=out;persist();infoBackTo();
+  });
+  $('i-tillbaka').addEventListener('click',infoBackTo);
+  $('info-fields').addEventListener('input',function(){$('i-err').hidden=true});
+  $('info-knapp').addEventListener('click',function(){openInfo('detalj')});
+  $('alg-info').addEventListener('click',function(){openInfo('alg')});
+
   /* ---------- Säkerhetskopia ---------- */
   async function exportBackup(){
-    if(!entries.length){showNotice('Det finns inga prov att spara ännu.');return}
+    if(!entries.length&&!allm.length){showNotice('Det finns inget att spara ännu.');return}
     var d=new Date(),name='hundprov-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';
-    var text=JSON.stringify({app:'hundprov',version:1,exported:d.toISOString(),entries:entries},null,2);
+    var text=JSON.stringify({app:'hundprov',version:1,exported:d.toISOString(),entries:entries,allmanna:allm},null,2);
     try{
       var dl=(window.claude&&window.claude.use)?await window.claude.use('downloads'):null;
       if(dl){await dl.save({filename:name,data:text});showNotice('Säkerhetskopian skickades till nedladdning: '+name);return}
@@ -990,11 +1187,13 @@ label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cu
         var added=0,replaced=0;
         arr.forEach(function(e){
           if(!e||typeof e.datum!=='string'||typeof e.namn!=='string')return;
-          var it={id:e.datum,namn:e.namn,reg:String(e.reg||''),chip:String(e.chip||''),datum:e.datum,tid:String(e.tid||''),plats:String(e.plats||''),pejl:String(e.pejl||''),idk:!!e.idk,slapp:typeof e.slapp==='number'?e.slapp:null,inkallning:String(e.inkallning||''),upptag:(e.upptag&&typeof e.upptag==='object')?e.upptag:null,alg:Array.isArray(e.alg)?e.alg:[],skall:Array.isArray(e.skall)?e.skall:[],nyaUpptag:Array.isArray(e.nyaUpptag)?e.nyaUpptag:[],kontakt:Array.isArray(e.kontakt)?e.kontakt:[],inkall:Array.isArray(e.inkall)?e.inkall:[],stotning:Array.isArray(e.stotning)?e.stotning:[],turer:Array.isArray(e.turer)?e.turer:[]};
+          var it={id:e.datum,namn:e.namn,reg:String(e.reg||''),chip:String(e.chip||''),datum:e.datum,tid:String(e.tid||''),plats:String(e.plats||''),pejl:String(e.pejl||''),idk:!!e.idk,slapp:typeof e.slapp==='number'?e.slapp:null,inkallning:String(e.inkallning||''),upptag:(e.upptag&&typeof e.upptag==='object')?e.upptag:null,alg:Array.isArray(e.alg)?e.alg:[],skall:Array.isArray(e.skall)?e.skall:[],nyaUpptag:Array.isArray(e.nyaUpptag)?e.nyaUpptag:[],kontakt:Array.isArray(e.kontakt)?e.kontakt:[],inkall:Array.isArray(e.inkall)?e.inkall:[],stotning:Array.isArray(e.stotning)?e.stotning:[],agare:String(e.agare||''),tel:String(e.tel||''),info:(e.info&&typeof e.info==='object')?e.info:null,anteckningar:Array.isArray(e.anteckningar)?e.anteckningar:[],turer:Array.isArray(e.turer)?e.turer:[]};
           var had=entries.some(function(x){return x.id===it.id});
           entries=entries.filter(function(x){return x.id!==it.id}).concat([it]);
           if(had)replaced++;else added++;
         });
+        if(!Array.isArray(arr))throw 0;
+        if(Array.isArray(j.allmanna))j.allmanna.forEach(function(n){if(n&&typeof n.id==='string'&&typeof n.text==='string'&&typeof n.tid==='number'){allm=allm.filter(function(x){return x.id!==n.id}).concat([{id:n.id,tid:n.tid,text:n.text}])}});
         persist();renderList();
         showNotice('Läste in '+(added+replaced)+' prov ('+added+' nya, '+replaced+' ersatte prov med samma datum).');
       }catch(e){showNotice('Filen kunde inte läsas som en säkerhetskopia från den här appen.')}
