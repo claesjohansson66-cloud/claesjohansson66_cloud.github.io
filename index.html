@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hundregistrering</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#17352F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hundprov">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#EEF2F0; --surface:#FFFFFF; --ink:#17352F; --muted:#5B6F6A; --line:#C9D5D1; --accent:#A3283B; --accent-ink:#FFFFFF; --hover:#E3EBE8;
+  --font:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1B18; --surface:#16272A; --ink:#E6EFEC; --muted:#93A8A2; --line:#2C423E; --accent:#E0566B; --accent-ink:#1A0A0D; --hover:#1E3336;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1B18; --surface:#16272A; --ink:#E6EFEC; --muted:#93A8A2; --line:#2C423E; --accent:#E0566B; --accent-ink:#1A0A0D; --hover:#1E3336;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);line-height:1.5;display:flex;justify-content:center;padding:clamp(20px,6vw,64px) 20px}
+main{width:100%;max-width:520px}
+h1{font-size:clamp(2.2rem,8vw,3.4rem);line-height:1.02;font-weight:800;letter-spacing:-.03em;margin:0 0 12px}
+.lead{color:var(--muted);margin:0 0 28px;max-width:40ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:clamp(20px,5vw,32px)}
+.field{margin-bottom:20px}
+label{display:block;font-weight:600;margin-bottom:6px}
+.hint{display:block;font-weight:400;color:var(--muted);font-size:.875rem}
+input,textarea,select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1.5px solid var(--line);border-radius:8px;padding:12px 14px;min-height:48px}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input[aria-invalid="true"]{border-color:var(--accent)}
+.err{color:var(--accent);font-size:.875rem;margin:6px 0 0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:420px){.row{grid-template-columns:1fr}}
+button{font:inherit;font-weight:600;min-height:48px;border-radius:8px;cursor:pointer;padding:0 18px;border:1.5px solid var(--line);background:transparent;color:var(--ink)}
+button:hover{background:var(--hover)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.primary:hover{filter:brightness(1.08);background:var(--accent)}
+button.danger{color:var(--accent);border-color:var(--accent)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.actions .grow{flex:1 1 160px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.top h2{font-size:1.25rem;margin:0}
+ul.dogs{list-style:none;margin:0 0 16px;padding:0}
+ul.dogs li+li{margin-top:8px}
+ul.dogs button{width:100%;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 16px;min-height:60px;background:var(--bg)}
+ul.dogs button:hover{background:var(--hover)}
+.dog-name{font-weight:800;font-size:1.1rem}
+.dog-meta{font-weight:400;color:var(--muted);font-size:.875rem}
+.empty{color:var(--muted);margin:0 0 20px}
+dl.detail{display:grid;grid-template-columns:max-content 1fr;gap:10px 20px;margin:0 0 24px}
+dl.detail dt{color:var(--muted)}
+dl.detail dd{margin:0;font-weight:600;word-break:break-word}
+.notice{border-left:4px solid var(--accent);padding:4px 0 4px 14px;margin:0 0 20px;font-size:.9rem}
+button.big{width:100%;min-height:72px;font-size:1.3rem;font-weight:800;margin-bottom:8px}
+.timer{color:var(--muted);text-align:center;min-height:1.5em;margin:0 0 16px;font-variant-numeric:tabular-nums}
+.summa{margin:0 0 16px;padding:10px 14px;background:var(--bg);border-radius:8px;font-size:.95rem}
+ul.turer{list-style:none;margin:0 0 16px;padding:0}
+ul.turer li{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+ul.turer h3{margin:0 0 8px;font-size:1.05rem}
+ul.turer dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0 0 10px}
+ul.turer dt{color:var(--muted)}
+ul.turer dd{margin:0;font-weight:600}
+.pagar{color:var(--accent);font-weight:600}
+textarea{resize:vertical;min-height:84px}
+.notering{white-space:pre-wrap;margin:0 0 10px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:.95rem}
+input[type=checkbox]{width:26px;height:26px;min-height:26px;padding:0;flex:none;accent-color:var(--accent)}
+label.check{display:flex;align-items:center;gap:12px;min-height:48px;margin:0;cursor:pointer}
+.slapprad{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 16px;padding:10px 14px;background:var(--bg);border-radius:8px}
+.slapprad button{min-height:40px}
+.algknappar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px}
+.algknappar button{min-height:64px;font-weight:800}
+.algknappar button:disabled{opacity:.45;cursor:not-allowed}
+.sub{font-size:1.1rem;margin:24px 0 10px}
+.statusbox{display:flex;flex-direction:column;gap:2px;margin:0 0 16px;padding:14px 16px;border-radius:10px;border-left:6px solid var(--accent);background:var(--bg)}
+.statuslabel{color:var(--muted);font-size:.85rem}
+.statusnamn{font-size:1.7rem;font-weight:800;line-height:1.15}
+.statussedan{color:var(--muted);font-size:.95rem}
+.algknappar button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="rubrik">Mina prov</h1>
+  <p class="lead" id="ingress">Välj ett prov i listan för att se uppgifterna.</p>
+  <p class="notice" id="notis" hidden></p>
+
+  <div class="card">
+    <!-- Lista -->
+    <section id="v-lista">
+      <ul class="dogs" id="lista"></ul>
+      <p class="empty" id="tom" hidden>Inga prov är sparade ännu.</p>
+      <button type="button" class="primary" id="ny" style="width:100%">Lägg till prov</button>
+      <div class="actions" style="margin-top:16px"><button type="button" class="grow" id="exportera">Spara säkerhetskopia</button><button type="button" class="grow" id="importera">Läs in säkerhetskopia</button></div>
+      <input type="file" id="fil" accept="application/json,.json" hidden>
+    </section>
+
+    <!-- Detalj -->
+    <section id="v-detalj" hidden>
+      <dl class="detail" id="detalj"></dl>
+      <div class="actions" id="detalj-knappar">
+        <button type="button" class="primary grow" id="sok">Släpp</button>
+        <button type="button" class="grow" id="alg-knapp" hidden>Älgarbete</button>
+        <button type="button" id="redigera">Redigera</button>
+        <button type="button" class="danger" id="ta-bort">Ta bort</button>
+        <button type="button" id="tillbaka1">Tillbaka till listan</button>
+      </div>
+      <div class="actions" id="bekrafta" hidden>
+        <button type="button" class="danger grow" id="ja-ta-bort">Ta bort provet</button>
+        <button type="button" id="avbryt-ta-bort">Avbryt</button>
+      </div>
+    </section>
+
+    <!-- Sök -->
+    <section id="v-sok" hidden>
+      <div id="slapp-box"></div>
+      <div class="field"><label for="inkallning">Inkallning sök</label><select id="inkallning"><option value="">Välj…</option><option value="Godkänt">Godkänt</option><option value="Icke godkänt">Icke godkänt</option></select></div>
+      <button type="button" class="primary big" id="ut-in"></button>
+      <button type="button" class="big" id="upptag-knapp" hidden>Upptag</button>
+      <button type="button" class="big" id="sok-alg" hidden>Till älgarbete</button>
+      <p class="timer" id="timer" aria-live="off"></p>
+      <div class="summa" id="summa" hidden></div>
+      <ul class="turer" id="turer"></ul>
+      <p class="empty" id="inga-turer">Inga sökturer registrerade ännu.</p>
+      <div class="actions"><button type="button" id="tillbaka2">Tillbaka till provet</button></div>
+    </section>
+
+    <!-- Älgarbete -->
+    <section id="v-alg" hidden>
+      <div class="statusbox" id="alg-badge">
+        <span class="statuslabel">Älgarbetets status</span>
+        <span class="statusnamn" id="alg-badge-namn">–</span>
+        <span class="statussedan" id="alg-badge-sedan"></span>
+      </div>
+      <div class="field">
+        <label for="alg-sel">Ändra status</label>
+        <select id="alg-sel"></select>
+      </div>
+      <div class="summa" id="alg-status"></div>
+      <div class="algknappar" id="alg-extra">
+        <button type="button" id="skall-knapp">Skallräkning</button>
+        <button type="button" id="stot-knapp">Stötning</button>
+        <button type="button" id="kontakt-knapp">Älgkontakt / skottillfälle</button>
+        <button type="button" id="inkall-knapp">Inkallning</button>
+        <button type="button" id="tb-knapp">Traktbyte</button>
+      </div>
+      <button type="button" class="big" id="alg-upptag" hidden>Upptag</button>
+      <button type="button" class="big" id="tb-till" hidden>Till traktbyte</button>
+      <h2 class="sub">Perioder</h2>
+      <ul class="turer" id="alg-lista"></ul>
+      <p class="empty" id="alg-tom">Ingen status vald ännu. Välj status i listan ovan.</p>
+      <h2 class="sub" id="h-stotning" hidden>Stötningar</h2>
+      <ul class="turer" id="stotning-lista"></ul>
+      <h2 class="sub" id="h-kontakt" hidden>Älgkontakt / skottillfälle</h2>
+      <ul class="turer" id="kontakt-lista"></ul>
+      <h2 class="sub" id="h-inkall" hidden>Inkallning under älgarbete</h2>
+      <ul class="turer" id="inkall-lista"></ul>
+      <h2 class="sub" id="h-skall" hidden>Skallräkningar</h2>
+      <ul class="turer" id="skall-lista"></ul>
+      <h2 class="sub">Upptag</h2>
+      <ul class="turer" id="upptag-lista"></ul>
+      <div class="actions"><button type="button" id="alg-tillbaka">Tillbaka till provet</button></div>
+    </section>
+
+    <!-- Traktbyte -->
+    <section id="v-tb" hidden>
+      <p class="summa" id="tb-status"></p>
+      <div class="field">
+        <label for="tb-start">Traktbyte startade <span class="hint">Älgarbetstiden står still tills du trycker på Nytt släpp.</span></label>
+        <input id="tb-start" type="time">
+      </div>
+      <p class="err" id="tb-err" hidden></p>
+      <button type="button" class="primary big" id="tb-slapp">Nytt släpp</button>
+      <div class="actions">
+        <button type="button" id="tb-tillbaka">Till älgarbete</button>
+        <button type="button" class="danger" id="tb-avbryt">Avbryt traktbyte</button>
+      </div>
+    </section>
+
+    <!-- Nytt upptag -->
+    <section id="v-nyup" hidden>
+      <dl class="detail" id="ny-info"></dl>
+      <div class="field">
+        <label for="ny-tid">Tid för upptag</label>
+        <input id="ny-tid" type="time">
+      </div>
+      <div class="field">
+        <label for="ny-avst">Avstånd till upptagsplatsen <span class="hint">I meter</span></label>
+        <input id="ny-avst" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ny-grupp">Provgruppens avstånd från släppet <span class="hint">I meter</span></label>
+        <input id="ny-grupp" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ny-hor">Upptaget är</label>
+        <select id="ny-hor"></select>
+      </div>
+      <p class="err" id="ny-err" hidden></p>
+      <div class="actions">
+        <button type="button" class="primary grow" id="ny-spara">Spara upptag</button>
+        <button type="button" id="ny-tillbaka">Tillbaka utan att spara</button>
+        <button type="button" class="danger" id="ny-angra">Ångra upptag</button>
+      </div>
+    </section>
+
+    <!-- Upptag -->
+    <section id="v-upptag" hidden>
+      <dl class="detail" id="up-info"></dl>
+      <div class="field">
+        <label for="up-tid">Tid för upptag <span class="hint">Älgarbetet startar vid denna tid. Provet pågår 5 timmar därefter.</span></label>
+        <input id="up-tid" type="time">
+      </div>
+      <div class="field">
+        <label for="up-avst">Avstånd till upptagsplatsen <span class="hint">I meter</span></label>
+        <input id="up-avst" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="up-str">Sträcka på sökturen som ledde till upptaget <span class="hint">I meter</span></label>
+        <input id="up-str" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="up-avs">Längsta avstånd från provgruppen <span class="hint">I meter</span></label>
+        <input id="up-avs" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="up-grupp">Provgruppens avstånd från släppet <span class="hint">I meter</span></label>
+        <input id="up-grupp" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="up-hor">Upptaget är</label>
+        <select id="up-hor"></select>
+      </div>
+      <div id="up-extra" hidden>
+        <div class="field"><label for="up-mon">Sökmönster</label><select id="up-mon"></select></div>
+        <div class="field"><label>Tempo <span class="hint">Räknas ut från sträckan och tiden från sökrundans start till upptaget</span></label><p class="summa" id="up-tempo" style="margin:0">–</p></div>
+      </div>
+      <p class="err" id="up-err" hidden></p>
+      <div class="actions">
+        <button type="button" class="primary grow" id="up-spara">Spara upptag</button>
+        <button type="button" id="up-tillbaka">Tillbaka utan att spara</button>
+        <button type="button" class="danger" id="up-angra">Ångra upptag</button>
+      </div>
+    </section>
+
+    <!-- Formulär -->
+    <section id="v-form" hidden>
+      <form id="f" novalidate>
+        <div class="field">
+          <label for="namn">Hundens namn</label>
+          <input id="namn" type="text" autocomplete="off">
+          <p class="err" id="e-namn" hidden></p>
+        </div>
+        <div class="field">
+          <label for="reg">Registreringsnummer <span class="hint">Till exempel SE12345/2022</span></label>
+          <input id="reg" type="text" autocomplete="off" autocapitalize="characters">
+          <p class="err" id="e-reg" hidden></p>
+        </div>
+        <div class="field">
+          <label for="chip">Chipnummer <span class="hint">Hela numret eller bara de sista siffrorna</span></label>
+          <input id="chip" type="text" inputmode="numeric" autocomplete="off" maxlength="15">
+          <p class="err" id="e-chip" hidden></p>
+        </div>
+        <div class="field">
+          <label for="plats">Provplats</label>
+          <input id="plats" type="text" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="pejl">Hundpejl <span class="hint">Märke</span></label>
+          <input id="pejl" type="text" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="check" for="idk"><input id="idk" type="checkbox"> ID på hunden kontrollerat</label>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="datum">Provdatum <span class="hint">Ett prov per datum</span></label>
+            <input id="datum" type="date">
+            <p class="err" id="e-datum" hidden></p>
+          </div>
+          <div class="field">
+            <label for="tid">Tid</label>
+            <input id="tid" type="time">
+            <p class="err" id="e-tid" hidden></p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="slapp">Släpptid <span class="hint">Fylls i automatiskt när du trycker på Släpp. Kan ändras här.</span></label>
+          <input id="slapp" type="time">
+        </div>
+        <div class="actions">
+          <button type="submit" class="primary grow" id="spara">Spara prov</button>
+          <button type="button" id="avbryt">Avbryt</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var KEY='hundprov:v1';
+  var entries=[];         // {id (= provdatum), namn, reg, chip, datum, tid, turer:[{id,ut,in,str,avs}]}
+  var storageOK=true;
+  var current=null, editingId=null, editingTur=null, editingSlapp=false, editingAlg=null, timerId=null;
+
+  var ids=['namn','reg','chip','datum','tid'];
+  var msgs={namn:'Ange hundens namn.',reg:'Ange registreringsnummer.',chip:'Ange minst en siffra i chipnumret (högst 15).',datum:'Välj ett provdatum.',tid:'Välj en tid.'};
+  var p=function(x){return String(x).padStart(2,'0')};
+  function mk(tag,attrs,text){var e=document.createElement(tag);if(attrs)for(var k in attrs){if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k])}if(text!=null)e.textContent=text;return e}
+
+  var NIVA=['Mycket effektivt','Effektivt','Lite effektivt','Mindre effektivt','Ineffektivt'];
+  var ALG=['Fast stånd','Gångstånd','Förföljande','Sök','Återgång','Övrigt'];
+  function rnd(ms){return Math.round(ms/60000)*60000}
+  function traktMs(e){
+    var l=(e.alg||[]).slice().sort(function(a,b){return a.start-b.start}),tot=0;
+    l.forEach(function(s,i){if(s.typ==='Traktbyte'){var end=l[i+1]?l[i+1].start:Date.now();tot+=Math.max(0,end-s.start)}});
+    return tot;
+  }
+  function algSlut(e){return e.upptag.tid+5*3600000+traktMs(e)}
+  function fillSel(sel,opts,val){
+    sel.textContent='';sel.appendChild(mk('option',{value:''},'Välj…'));
+    opts.forEach(function(o){var op=mk('option',{value:o},o);if(o===val)op.selected=true;sel.appendChild(op)});
+  }
+
+  function load(){
+    try{var raw=localStorage.getItem(KEY);entries=raw?JSON.parse(raw):[];if(!Array.isArray(entries))entries=[]}
+    catch(e){entries=[];storageOK=false}
+    entries.forEach(function(e){
+      if(!Array.isArray(e.turer))e.turer=[];
+      var seen={};
+      e.turer.forEach(function(t,i){if(seen[t.id])t.id=t.id+'_'+i;seen[t.id]=1});
+    });
+  }
+  function persist(){
+    try{localStorage.setItem(KEY,JSON.stringify(entries));return true}
+    catch(e){storageOK=false;showNotice('Det gick inte att spara i telefonen. Uppgifterna finns kvar tills sidan stängs.');return false}
+  }
+  function showNotice(t){$('notis').textContent=t;$('notis').hidden=!t}
+
+  /* ---------- Format ---------- */
+  function fmtDatum(d){try{return new Date(d+'T12:00:00').toLocaleDateString('sv-SE',{year:'numeric',month:'long',day:'numeric'})}catch(e){return d}}
+  function fmtTid(ms){var d=new Date(rnd(ms));return p(d.getHours())+':'+p(d.getMinutes())}
+  function fmtDur(ms){var t=Math.max(0,Math.round(ms/60000)),h=Math.floor(t/60),m=t%60;return h>0?h+' h '+m+' min':m+' min'}
+  function nf(v,min,max){return v.toLocaleString('sv-SE',{minimumFractionDigits:min,maximumFractionDigits:max})}
+  function speed(t){if(t.in==null||t.str==null)return null;var h=(t.in-t.ut)/3600000;return h>0?(t.str/1000)/h:null}
+
+  /* ---------- Vyer ---------- */
+  function view(name){
+    ['lista','detalj','form','sok','upptag','alg','nyup','tb'].forEach(function(v){$('v-'+v).hidden=(v!==name)});
+    var sub=current?current.namn+' · '+fmtDatum(current.datum):'';
+    var t={lista:['Mina prov','Välj ett prov i listan för att se uppgifterna.'],
+           detalj:[current?current.namn:'Prov',current?fmtDatum(current.datum)+' kl. '+current.tid:''],
+           form:[editingId?'Redigera prov':'Nytt prov','Fyll i uppgifterna om hunden och välj provdatum och tid.'],
+           sok:['Sök',sub],upptag:['Upptag',sub],alg:['Älgarbete',sub],nyup:['Nytt upptag',sub],tb:['Traktbyte',sub]}[name];
+    $('rubrik').textContent=t[0];$('ingress').textContent=t[1];
+    $('bekrafta').hidden=true;$('detalj-knappar').hidden=false;
+    if(timerId){clearInterval(timerId);timerId=null}
+    if(name==='sok'){timerId=setInterval(tick,1000)}
+    if(name==='alg'){timerId=setInterval(tickAlg,1000)}
+    if(name==='tb'){timerId=setInterval(tickTb,1000)}
+    window.scrollTo(0,0);
+  }
+
+  function renderList(){
+    var ul=$('lista');ul.textContent='';
+    var sorted=entries.slice().sort(function(a,b){return (b.datum+b.tid).localeCompare(a.datum+a.tid)});
+    sorted.forEach(function(d){
+      var li=mk('li'),b=mk('button',{type:'button'});
+      b.appendChild(mk('span',{class:'dog-name'},d.namn));
+      var n=d.turer.length;
+      b.appendChild(mk('span',{class:'dog-meta'},fmtDatum(d.datum)+' kl. '+d.tid+' · '+d.reg+(n?' · '+n+(n===1?' tur':' turer'):'')));
+      b.addEventListener('click',function(){openEntry(d.id)});
+      li.appendChild(b);ul.appendChild(li);
+    });
+    $('tom').hidden=sorted.length>0;
+  }
+  function renderDetail(){
+    var dl=$('detalj');dl.textContent='';
+    $('sok').textContent=current.slapp?'Till sök':'Släpp';$('alg-knapp').hidden=!current.upptag;
+    [['Namn',current.namn],['Registreringsnummer',current.reg],['Chipnummer',current.chip],['Provdatum',fmtDatum(current.datum)],['Tid',current.tid],['Provplats',current.plats||'–'],['Hundpejl',current.pejl||'–'],['ID kontrollerat',current.idk?'Ja':'Nej'],['Släpptid',current.slapp?fmtTid(current.slapp):'–'],['Inkallning sök',current.inkallning||'–'],['Sökturer',String(current.turer.length)]].concat(current.upptag?[['Älgarbete start',fmtTid(current.upptag.tid)],['Älgarbetets status',(algCur()||{}).typ||'–'],['Provet slutar',fmtTid(algSlut(current))]]:[]).forEach(function(r){
+      dl.appendChild(mk('dt',null,r[0]));dl.appendChild(mk('dd',null,r[1]));
+    });
+  }
+  function openEntry(id){
+    current=entries.filter(function(d){return d.id===id})[0];
+    if(!current)return;
+    renderDetail();view('detalj');
+  }
+
+  /* ---------- Prov: formulär ---------- */
+  function clearErrors(){ids.forEach(function(id){$(id).setAttribute('aria-invalid','false');$('e-'+id).hidden=true})}
+  function openForm(e){
+    editingId=e?e.id:null;clearErrors();
+    var n=new Date();
+    $('namn').value=e?e.namn:'';$('reg').value=e?e.reg:'';$('chip').value=e?e.chip:'';
+    $('plats').value=e&&e.plats?e.plats:'';$('pejl').value=e&&e.pejl?e.pejl:'';$('idk').checked=!!(e&&e.idk);$('slapp').value=e&&e.slapp?fmtTid(e.slapp):'';
+    $('datum').value=e?e.datum:n.getFullYear()+'-'+p(n.getMonth()+1)+'-'+p(n.getDate());
+    $('tid').value=e?e.tid:p(n.getHours())+':'+p(n.getMinutes());
+    view('form');$('namn').focus();
+  }
+  function valid(id,v){v=v.trim();return id==='chip'?/^\d{1,15}$/.test(v):v.length>0}
+  function showErr(id,ok,text){
+    $(id).setAttribute('aria-invalid',ok?'false':'true');
+    var e=$('e-'+id);e.hidden=ok;e.textContent=ok?'':(text||msgs[id]);
+  }
+  $('chip').addEventListener('input',function(e){e.target.value=e.target.value.replace(/\D/g,'').slice(0,15)});
+  $('reg').addEventListener('input',function(e){e.target.value=e.target.value.toUpperCase()});
+
+  $('f').addEventListener('submit',function(ev){
+    ev.preventDefault();
+    var ok=true,first=null;
+    ids.forEach(function(id){
+      var good=valid(id,$(id).value),text=null;
+      if(good&&id==='datum'){
+        var dup=entries.filter(function(d){return d.id===$('datum').value&&d.id!==editingId})[0];
+        if(dup){good=false;text='Det finns redan ett prov med det datumet ('+dup.namn+').'}
+      }
+      showErr(id,good,text);
+      if(!good){ok=false;if(!first)first=id}
+    });
+    if(!ok){$(first).focus();return}
+    var old=entries.filter(function(d){return d.id===editingId})[0];
+    var slv=$('slapp').value.trim(),sl=slv?parseT(slv,new Date($('datum').value+'T12:00:00').getTime()):null;
+    var data={id:$('datum').value,namn:$('namn').value.trim(),reg:$('reg').value.trim(),chip:$('chip').value.trim(),datum:$('datum').value,tid:$('tid').value,plats:$('plats').value.trim(),pejl:$('pejl').value.trim(),idk:$('idk').checked,slapp:sl,inkallning:old?(old.inkallning||''):'',upptag:old?(old.upptag||null):null,alg:old?(old.alg||[]):[],skall:old?(old.skall||[]):[],nyaUpptag:old?(old.nyaUpptag||[]):[],kontakt:old?(old.kontakt||[]):[],inkall:old?(old.inkall||[]):[],stotning:old?(old.stotning||[]):[],turer:old?old.turer:[]};
+    entries=entries.filter(function(d){return d.id!==editingId&&d.id!==data.id}).concat([data]);
+    persist();
+    current=data;editingId=null;renderList();renderDetail();view('detalj');
+  });
+
+  /* ---------- Sök ---------- */
+  function sorted(){return current.turer.slice().sort(function(a,b){return a.ut-b.ut})}
+  function openTur(){return current.turer.filter(function(t){return t.in==null})[0]}
+  function tick(){
+    var o=openTur();
+    $('timer').textContent=o?'Ute sedan '+fmtTid(o.ut)+' · '+fmtDur(Date.now()-o.ut):'';
+  }
+  function parseT(str,base){
+    var m=/^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec((str||'').trim());
+    if(!m)return null;
+    var d=new Date(base);d.setHours(+m[1],+m[2],+(m[3]||0),0);return rnd(d.getTime());
+  }
+  function parseNum(s){
+    s=(s||'').trim().replace(',','.');
+    if(!s)return{v:null};
+    if(!/^\d+(\.\d+)?$/.test(s))return{bad:true};
+    return{v:parseFloat(s)};
+  }
+
+  function renderSok(){
+    var o=openTur();
+    var b=$('ut-in');
+    b.textContent=o?'In – hunden är tillbaka':'Ut – hunden går ut';
+    renderSlapp();$('inkallning').value=current.inkallning||'';
+    var upp=current.upptag,ac=upp?algCur():null,sokOk=!upp||(ac&&ac.typ==='Sök');
+    $('ut-in').hidden=!(o||sokOk);$('upptag-knapp').hidden=!o;$('upptag-knapp').textContent='Upptag';$('sok-alg').hidden=!upp;$('sok-alg').textContent='Till älgarbete'+(ac?' · status: '+ac.typ:'');
+    tick();
+    var list=sorted(),ul=$('turer');ul.textContent='';
+    $('inga-turer').hidden=list.length>0;
+
+    var done=list.filter(function(t){return t.in!=null});
+    var sm=$('summa');
+    if(done.length){
+      var tot=done.reduce(function(a,t){return a+(t.in-t.ut)},0);
+      var meter=done.reduce(function(a,t){return a+(t.str||0)},0);
+      sm.textContent='Avslutade turer: '+done.length+' · Total tid: '+fmtDur(tot)+' · Total sträcka: '+nf(meter,0,0)+' m';
+      sm.hidden=false;
+    }else sm.hidden=true;
+
+    list.map(function(t,i){return{t:t,n:i+1}}).reverse().forEach(function(x){
+      var t=x.t,li=mk('li');
+      li.appendChild(mk('h3',null,'Tur '+x.n));
+      if(editingTur===t.id){li.appendChild(editForm(t))}
+      else{
+        var dl=mk('dl'),sp=speed(t);
+        var rows=[['Ut',fmtTid(t.ut)],[(t.upptag||t.nyup)?'Upptag':'In',t.in!=null?fmtTid(t.in):null],
+          ['Tid',t.in!=null?fmtDur(t.in-t.ut):null],
+          ['Sträcka',t.str!=null?nf(t.str,0,0)+' m':'–'],
+          ['Längsta avstånd',t.avs!=null?nf(t.avs,0,0)+' m':'–'],
+          ['Hastighet',sp!=null?nf(sp,1,1)+' km/h':'–'],['Sökmönster',t.monster||'–']];
+        rows.forEach(function(r){
+          dl.appendChild(mk('dt',null,r[0]));
+          dl.appendChild(r[1]===null?mk('dd',{class:'pagar'},'Pågår'):mk('dd',null,r[1]));
+        });
+        li.appendChild(dl);
+        if(t.not){li.appendChild(mk('p',{class:'notering'},t.not))}
+        var bt=mk('button',{type:'button'},'Redigera');
+        bt.addEventListener('click',function(){editingTur=t.id;renderSok()});
+        li.appendChild(bt);
+      }
+      ul.appendChild(li);
+    });
+  }
+
+  function renderSlapp(){
+    var box=$('slapp-box');box.textContent='';
+    if(editingSlapp){
+      var inp=mk('input',{id:'sl-in',type:'time',value:current.slapp?fmtTid(current.slapp):''});
+      box.appendChild(field('Släpptid',inp));
+      var err=mk('p',{class:'err',hidden:''});box.appendChild(err);
+      var a=mk('div',{class:'actions',style:'margin-bottom:16px'});
+      var sv=mk('button',{type:'button',class:'primary grow'},'Spara släpptid');
+      var av=mk('button',{type:'button'},'Avbryt');
+      sv.addEventListener('click',function(){
+        var v=parseT(inp.value,current.slapp||new Date(current.datum+'T12:00:00').getTime());
+        if(v==null){err.textContent='Ange en tid.';err.hidden=false;return}
+        current.slapp=v;persist();editingSlapp=false;renderSok();
+      });
+      av.addEventListener('click',function(){editingSlapp=false;renderSlapp()});
+      a.appendChild(sv);a.appendChild(av);box.appendChild(a);
+    }else{
+      var row=mk('div',{class:'slapprad'});
+      row.appendChild(mk('span',null,'Släpp: '+(current.slapp?fmtTid(current.slapp):'ej registrerad')));
+      var bt=mk('button',{type:'button'},'Ändra');
+      bt.addEventListener('click',function(){editingSlapp=true;renderSlapp()});
+      row.appendChild(bt);box.appendChild(row);
+    }
+  }
+  $('inkallning').addEventListener('change',function(e){current.inkallning=e.target.value;persist()});
+  function selectEl(id,opts,val){
+    var s=mk('select',{id:id});
+    s.appendChild(mk('option',{value:''},'Välj…'));
+    opts.forEach(function(o){var op=mk('option',{value:o},o);if(o===val)op.selected=true;s.appendChild(op)});
+    return s;
+  }
+
+  function field(label,input,hint){
+    var w=mk('div',{class:'field'}),l=mk('label',{for:input.id},label);
+    if(hint)l.appendChild(mk('span',{class:'hint'},hint));
+    w.appendChild(l);w.appendChild(input);return w;
+  }
+  function editForm(t){
+    var f=mk('div');
+    f.appendChild(field('Tid ut',mk('input',{id:'tt-ut',type:'time',value:fmtTid(t.ut)})));
+    if(t.upptag||t.nyup)f.appendChild(mk('p',{class:'hint'},'Tiden för upptag ändras på upptagssidan.'));
+    else if(t.in!=null)f.appendChild(field('Tid in',mk('input',{id:'tt-in',type:'time',value:fmtTid(t.in)})));
+    else f.appendChild(mk('p',{class:'hint'},'Turen pågår. Tryck på In när hunden är tillbaka.'));
+    f.appendChild(field('Sträcka',mk('input',{id:'tt-str',type:'text',inputmode:'numeric',autocomplete:'off',value:t.str!=null?String(t.str):''}),'Hur långt hunden gått, i meter, till exempel 2400'));
+    f.appendChild(field('Längsta avstånd från provgruppen',mk('input',{id:'tt-avs',type:'text',inputmode:'numeric',autocomplete:'off',value:t.avs!=null?String(t.avs):''}),(t.upptag||t.nyup)?'I meter':'I meter. Måste vara mindre än halva sträckan när hunden kommer tillbaka.'));
+    f.appendChild(field('Sökmönster',selectEl('tt-mon',NIVA,t.monster||'')));
+    f.appendChild(field('Anteckningar',mk('textarea',{id:'tt-not',rows:'3'},t.not||'')));
+    var err=mk('p',{class:'err',id:'tt-err',hidden:''});f.appendChild(err);
+    var a=mk('div',{class:'actions'});
+    var sv=mk('button',{type:'button',class:'primary grow'},'Spara tur');
+    var av=mk('button',{type:'button'},'Avbryt');
+    var rm=mk('button',{type:'button',class:'danger'},'Ta bort tur');
+    var sure=false;
+    function fail(m){err.textContent=m;err.hidden=false}
+    sv.addEventListener('click',function(){
+      var ut=parseT($('tt-ut').value,t.ut);
+      if(ut==null)return fail('Ange tid ut.');
+      var inn=null;
+      if(t.upptag||t.nyup){inn=t.in;if(inn<ut)return fail('Tiden ut måste vara före upptaget.')}else if(t.in!=null){inn=parseT($('tt-in').value,t.ut);if(inn==null)return fail('Ange tid in.');if(inn<ut)return fail('Tiden in måste vara efter tiden ut.')}
+      var st=parseNum($('tt-str').value),av2=parseNum($('tt-avs').value);
+      if(st.bad||(st.v!=null&&st.v%1!==0))return fail('Sträckan anges i hela meter.');
+      if(av2.bad||(av2.v!=null&&av2.v%1!==0))return fail('Längsta avstånd anges i hela meter.');
+      if(t.in!=null&&!(t.upptag||t.nyup)&&st.v!=null&&av2.v!=null&&av2.v>=st.v/2)return fail('Längsta avstånd måste vara mindre än halva sträckan när hunden kommer tillbaka.');
+      t.ut=ut;t.in=inn;t.str=st.v;t.avs=av2.v;t.not=$('tt-not').value.trim();t.monster=$('tt-mon').value;
+      persist();editingTur=null;renderSok();
+    });
+    av.addEventListener('click',function(){editingTur=null;renderSok()});
+    rm.addEventListener('click',function(){
+      if(!sure){sure=true;rm.textContent='Bekräfta borttagning';return}
+      current.turer=current.turer.filter(function(x){return x.id!==t.id});
+      persist();editingTur=null;renderSok();
+    });
+    a.appendChild(sv);a.appendChild(av);if(!(t.upptag||t.nyup))a.appendChild(rm);f.appendChild(a);
+    return f;
+  }
+
+  $('ut-in').addEventListener('click',function(){
+    var o=openTur(),now=rnd(Date.now());
+    if(!o){current.turer.push({id:'t'+Date.now()+Math.floor(Math.random()*1000),ut:now,in:null,str:null,avs:null});editingTur=null}
+    else{o.in=now;editingTur=o.id}
+    persist();renderSok();
+    if(editingTur){var s=$('tt-str');if(s)s.focus()}
+  });
+  $('sok').addEventListener('click',function(){
+    editingTur=null;editingSlapp=false;
+    if(!current.slapp){current.slapp=rnd(Date.now());persist()}
+    view('sok');renderSok();
+  });
+  $('tillbaka2').addEventListener('click',function(){editingTur=null;editingSlapp=false;renderDetail();view('detalj')});
+
+  /* ---------- Upptag ---------- */
+  var upSure=false,upTur=null;
+  function updTempo(){
+    var el=$('up-tempo'),txt='–';
+    if(upTur){
+      var tid=parseT($('up-tid').value,upTur.ut),s=pm('up-str');
+      if(tid!=null&&!s.bad&&s.v!=null&&tid>upTur.ut)txt=nf((s.v/1000)/((tid-upTur.ut)/3600000),1,1)+' km/h';
+    }
+    el.textContent=txt;
+  }
+  $('up-tid').addEventListener('input',updTempo);
+  $('up-str').addEventListener('input',updTempo);
+  function turById(id){return current.turer.filter(function(t){return t.id===id})[0]}
+  function pm(id){var r=parseNum($(id).value);return (r.bad||(r.v!=null&&r.v%1!==0))?{bad:true}:r}
+  function upFail(m){var e=$('up-err');e.textContent=m;e.hidden=false}
+  function openUpptag(){
+    var up=current.upptag,t=turById(up.turId);
+    var nr=sorted().findIndex(function(x){return x.id===t.id})+1;
+    var dl=$('up-info');dl.textContent='';
+    [['Sökrunda','Tur '+nr],['Sökrundan startade',fmtTid(t.ut)]].forEach(function(r){
+      dl.appendChild(mk('dt',null,r[0]));dl.appendChild(mk('dd',null,r[1]));
+    });
+    $('up-tid').value=fmtTid(up.tid);
+    $('up-avst').value=up.avst!=null?String(up.avst):'';
+    $('up-str').value=t.str!=null?String(t.str):'';
+    $('up-avs').value=t.avs!=null?String(t.avs):'';
+    $('up-grupp').value=up.grupp!=null?String(up.grupp):'';
+    fillSel($('up-hor'),['Hörbart','Inte hörbart'],up.horbart||'');
+    $('up-extra').hidden=!(nr===1||nr===2);
+    fillSel($('up-mon'),NIVA,t.monster||'');
+    upTur=t;updTempo();
+    $('up-err').hidden=true;
+    upSure=false;$('up-angra').textContent='Ångra upptag';
+    view('upptag');
+  }
+  $('upptag-knapp').addEventListener('click',function(){
+    var o=openTur();if(!o)return;
+    if(current.upptag){
+      var now2=Math.max(rnd(Date.now()),o.ut),rec={id:'n'+Date.now(),tid:now2,avst:null,grupp:null,horbart:'',turId:o.id};
+      o.in=now2;o.nyup=rec.id;
+      if(!current.nyaUpptag)current.nyaUpptag=[];
+      current.nyaUpptag.push(rec);editingTur=null;persist();openNyup(rec.id);return;
+    }
+    var now=Math.max(rnd(Date.now()),o.ut);
+    o.in=now;o.upptag=true;
+    current.upptag={turId:o.id,tid:now,avst:null,grupp:null,horbart:''};
+    editingTur=null;persist();openUpptag();
+  });
+  $('up-spara').addEventListener('click',function(){
+    var up=current.upptag,t=turById(up.turId);
+    var tid=parseT($('up-tid').value,t.ut);
+    if(tid==null)return upFail('Ange tid för upptag.');
+    if(tid<t.ut)return upFail('Tiden för upptag måste vara efter att sökrundan startade.');
+    var a=pm('up-avst'),s=pm('up-str'),m=pm('up-avs'),g=pm('up-grupp');
+    if(a.bad||s.bad||m.bad||g.bad)return upFail('Avstånd och sträcka anges i hela meter.');
+    var nr=sorted().findIndex(function(x){return x.id===t.id})+1;
+    up.tid=tid;t.in=tid;up.avst=a.v;up.grupp=g.v;up.horbart=$('up-hor').value;
+    t.str=s.v;t.avs=m.v;
+    if(nr===1||nr===2){t.monster=$('up-mon').value}
+    persist();renderList();renderDetail();openAlg();
+  });
+  $('up-tillbaka').addEventListener('click',function(){view('sok');renderSok()});
+  $('up-angra').addEventListener('click',function(){
+    if(!upSure){upSure=true;$('up-angra').textContent=hasAlgData()?'Bekräfta: ångra upptag och radera älgarbetet':'Bekräfta: ångra upptag';return}
+    var t=turById(current.upptag.turId);
+    t.in=null;delete t.upptag;current.upptag=null;current.alg=[];current.skall=[];current.nyaUpptag=[];current.kontakt=[];current.inkall=[];current.stotning=[];
+    current.turer.forEach(function(x){delete x.nyup});
+    persist();view('sok');renderSok();
+  });
+
+  /* ---------- Älgarbete ---------- */
+  var HOR=['Utmärkt','Mycket bra','Bra','Godtagbar','Dålig'];
+  var SKALL=['Jämnt','Något periodiskt','Reprisartat med korta uppehåll','Reprisartat med störande uppehåll','Reprisartat med långa uppehåll'];
+  var ELG=['Ensam älg','Flera älgar','Ko med kalv/ar','Okänt'];
+  var INK=['Kommer direkt','Kommer efter någon tvekan','Hunden kommer inte'];
+  var STOT=['Stötning av provgruppen','Stötning av utomstående'];
+  var editingEvt=null,upNy=null,nySure=false,tbSure=false;
+  var EVT=[
+    {key:'stotning',label:'Stötning',head:'h-stotning',ul:'stotning-lista',btn:'stot-knapp',
+     fields:[{k:'typ',label:'Stötning av',type:'sel',opts:STOT,req:true,msg:'Välj typ av stötning.'},
+             {k:'status',label:'Ny status på älgarbetet',type:'sel',opts:ALG,req:true,msg:'Välj ny status på älgarbetet.'}],
+     draft:true,
+     after:function(s){
+       var seg=current.alg.filter(function(x){return x.stot===s.id})[0];
+       if(seg){seg.typ=s.status;seg.start=s.tid}
+       else current.alg.push({id:'a'+Date.now(),typ:s.status,start:s.tid,stot:s.id});
+     },
+     onRemove:function(s){current.alg=(current.alg||[]).filter(function(x){return x.stot!==s.id})}},
+    {key:'kontakt',label:'Älgkontakt / skottillfälle',head:'h-kontakt',ul:'kontakt-lista',btn:'kontakt-knapp',
+     fields:[{k:'typ',label:'Typ av älgar',type:'sel',opts:ELG}]},
+    {key:'inkall',label:'Inkallning',head:'h-inkall',ul:'inkall-lista',btn:'inkall-knapp',
+     fields:[{k:'val',label:'Inkallning',type:'sel',opts:INK}]},
+    {key:'skall',label:'Skallräkning',head:'h-skall',ul:'skall-lista',btn:'skall-knapp',
+     fields:[{k:'antal',label:'Antal skall per minut',type:'int'},
+             {k:'hor',label:'Hörbarhet',type:'sel',opts:HOR},
+             {k:'typ',label:'Skallets karaktär',type:'sel',opts:SKALL}]}
+  ];
+  function hasAlgData(){return ['alg','skall','nyaUpptag','kontakt','inkall','stotning'].some(function(k){return current[k]&&current[k].length})}
+  function openAlg(){editingAlg=null;editingEvt=null;view('alg');renderAlg()}
+  function algList(){if(!current.alg)current.alg=[];return current.alg.slice().sort(function(a,b){return a.start-b.start})}
+  function algCur(){var l=algList();return l[l.length-1]}
+  function addRows(dl,rows){rows.forEach(function(r){
+    dl.appendChild(mk('dt',null,r[0]));
+    dl.appendChild(r[1]===null?mk('dd',{class:'pagar'},'Pågår'):mk('dd',null,r[1]));
+  })}
+  function tickAlg(){
+    if(!current||!current.upptag)return;
+    var c=algCur(),now=Date.now(),slut=algSlut(current),left=slut-now;
+    $('alg-badge-namn').textContent=c?c.typ:'Ingen vald';
+    $('alg-badge-sedan').textContent=c?'sedan '+fmtTid(c.start)+' · '+fmtDur(now-c.start):'Välj status i listan nedan';
+    $('alg-status').textContent='Provet slutar '+fmtTid(slut)+(left>0?' · återstår '+fmtDur(left):' · tiden är slut');
+  }
+  $('alg-sel').addEventListener('change',function(e){
+    var typ=e.target.value;
+    if(!typ){renderAlg();return}
+    var c=algCur();
+    if(c&&c.typ===typ)return;
+    current.alg.push({id:'a'+Date.now(),typ:typ,start:Math.max(rnd(Date.now()),c?c.start:0)});
+    persist();editingAlg=null;renderAlg();
+  });
+  function renderAlg(){
+    var l=algList(),cur=l[l.length-1],inTb=!!(cur&&cur.typ==='Traktbyte');
+    var sel=$('alg-sel');sel.textContent='';
+    sel.appendChild(mk('option',{value:''},'Välj status…'));
+    ALG.forEach(function(typ){var op=mk('option',{value:typ},typ);if(cur&&cur.typ===typ)op.selected=true;sel.appendChild(op)});
+    if(inTb){var tbo=mk('option',{value:'Traktbyte'},'Traktbyte');tbo.selected=true;sel.appendChild(tbo)}
+    if(!cur)sel.value='';
+    sel.disabled=inTb;
+    $('alg-extra').hidden=inTb;
+    $('tb-till').hidden=!inTb;
+    $('alg-upptag').hidden=!(cur&&cur.typ==='Återgång');
+
+    /* Perioder */
+    var ul=$('alg-lista');ul.textContent='';
+    $('alg-tom').hidden=l.length>0;
+    l.map(function(s,i){return{s:s,end:l[i+1]?l[i+1].start:null}}).reverse().forEach(function(x){
+      var s=x.s,li=mk('li');
+      li.appendChild(mk('h3',null,s.typ));
+      if(editingAlg===s.id){li.appendChild(algForm(s))}
+      else{
+        var dl=mk('dl');
+        addRows(dl,[['Start',fmtTid(s.start)],['Slut',x.end!=null?fmtTid(x.end):null],['Tid',fmtDur((x.end!=null?x.end:Date.now())-s.start)]]);
+        li.appendChild(dl);
+        var bt=mk('button',{type:'button'},'Redigera');
+        bt.addEventListener('click',function(){editingAlg=s.id;renderAlg()});
+        li.appendChild(bt);
+      }
+      ul.appendChild(li);
+    });
+
+    EVT.forEach(renderEvt);
+
+    /* Upptag */
+    var ups=[{n:1,tid:current.upptag.tid,avst:current.upptag.avst,grupp:current.upptag.grupp,hor:current.upptag.horbart,open:openUpptag}];
+    (current.nyaUpptag||[]).slice().sort(function(a,b){return a.tid-b.tid}).forEach(function(r,i){
+      ups.push({n:i+2,tid:r.tid,avst:r.avst,grupp:r.grupp,hor:r.horbart,open:function(){openNyup(r.id)}});
+    });
+    var uu=$('upptag-lista');uu.textContent='';
+    ups.forEach(function(u){
+      var li=mk('li');li.appendChild(mk('h3',null,'Upptag '+u.n));
+      var dl=mk('dl');
+      addRows(dl,[['Tid',fmtTid(u.tid)],['Avstånd till upptagsplatsen',u.avst!=null?nf(u.avst,0,0)+' m':'–'],['Hörbarhet',u.hor||'–'],['Provgruppens avstånd från släppet',u.grupp!=null?nf(u.grupp,0,0)+' m':'–']]);
+      li.appendChild(dl);
+      var bt=mk('button',{type:'button'},'Redigera');
+      bt.addEventListener('click',u.open);
+      li.appendChild(bt);uu.appendChild(li);
+    });
+    tickAlg();
+  }
+  function algForm(s){
+    var f=mk('div'),tb=s.typ==='Traktbyte';
+    if(!tb)f.appendChild(field('Typ',selectEl('al-typ',ALG,s.typ)));
+    f.appendChild(field(tb?'Starttid för traktbyte':'Starttid',mk('input',{id:'al-start',type:'time',value:fmtTid(s.start)}),tb?'Traktbytet slutar när nästa period börjar':null));
+    var err=mk('p',{class:'err',hidden:''});f.appendChild(err);
+    var a=mk('div',{class:'actions'});
+    var sv=mk('button',{type:'button',class:'primary grow'},'Spara');
+    var av=mk('button',{type:'button'},'Avbryt');
+    var rm=mk('button',{type:'button',class:'danger'},'Ta bort');
+    var sure=false;
+    function fail(m){err.textContent=m;err.hidden=false}
+    sv.addEventListener('click',function(){
+      var typ=tb?'Traktbyte':$('al-typ').value;if(!typ)return fail('Välj typ.');
+      var st=parseT($('al-start').value,s.start);if(st==null)return fail('Ange starttid.');
+      if(st<current.upptag.tid)return fail('Starttiden kan inte vara före älgarbetets start ('+fmtTid(current.upptag.tid)+').');
+      s.typ=typ;s.start=st;
+      if(s.stot){var r=(current.stotning||[]).filter(function(x){return x.id===s.stot})[0];if(r){r.tid=st;r.status=typ}}
+      persist();editingAlg=null;renderAlg();
+    });
+    av.addEventListener('click',function(){editingAlg=null;renderAlg()});
+    rm.addEventListener('click',function(){
+      if(!sure){sure=true;rm.textContent='Bekräfta borttagning';return}
+      current.alg=current.alg.filter(function(x){return x.id!==s.id});
+      if(s.stot)current.stotning=(current.stotning||[]).filter(function(x){return x.id!==s.stot});
+      persist();editingAlg=null;renderAlg();
+    });
+    a.appendChild(sv);a.appendChild(av);a.appendChild(rm);f.appendChild(a);
+    return f;
+  }
+
+  /* Händelser: stötning, älgkontakt, inkallning, skallräkning */
+  function evtList(c){if(!current[c.key])current[c.key]=[];return current[c.key].slice().sort(function(a,b){return a.tid-b.tid})}
+  function removeEvt(c,s){current[c.key]=current[c.key].filter(function(x){return x.id!==s.id});if(c.onRemove)c.onRemove(s)}
+  function renderEvt(c){
+    var l=evtList(c);
+    $(c.head).hidden=!l.length;
+    var ul=$(c.ul);ul.textContent='';
+    l.map(function(s,i){return{s:s,n:i+1}}).reverse().forEach(function(x){
+      var s=x.s,li=mk('li');
+      li.appendChild(mk('h3',null,c.label+' '+x.n));
+      if(editingEvt&&editingEvt.key===c.key&&editingEvt.id===s.id){li.appendChild(evtForm(c,s))}
+      else{
+        if(s.draft)li.appendChild(mk('p',{class:'hint'},'Ej slutförd. Tryck på Redigera och välj det som saknas.'));
+        var dl=mk('dl'),rows=[['Tid',fmtTid(s.tid)]];
+        c.fields.forEach(function(fd){rows.push([fd.label,(s[fd.k]!=null&&s[fd.k]!=='')?String(s[fd.k]):'–'])});
+        addRows(dl,rows);li.appendChild(dl);
+        var bt=mk('button',{type:'button'},'Redigera');
+        bt.addEventListener('click',function(){editingEvt={key:c.key,id:s.id};renderAlg()});
+        li.appendChild(bt);
+      }
+      ul.appendChild(li);
+    });
+  }
+  function evtForm(c,s){
+    var f=mk('div');
+    f.appendChild(field('Tid',mk('input',{id:'ev-tid',type:'time',value:fmtTid(s.tid)})));
+    c.fields.forEach(function(fd){
+      if(fd.type==='int')f.appendChild(field(fd.label,mk('input',{id:'ev-'+fd.k,type:'text',inputmode:'numeric',autocomplete:'off',value:s[fd.k]!=null?String(s[fd.k]):''})));
+      else f.appendChild(field(fd.label,selectEl('ev-'+fd.k,fd.opts,s[fd.k]||'')));
+    });
+    var err=mk('p',{class:'err',hidden:''});f.appendChild(err);
+    var a=mk('div',{class:'actions'});
+    var sv=mk('button',{type:'button',class:'primary grow'},'Spara');
+    var av=mk('button',{type:'button'},'Avbryt');
+    var rm=mk('button',{type:'button',class:'danger'},'Ta bort');
+    var sure=false;
+    function fail(m){err.textContent=m;err.hidden=false}
+    sv.addEventListener('click',function(){
+      var t=parseT($('ev-tid').value,s.tid);if(t==null)return fail('Ange tid.');
+      if(t<current.upptag.tid)return fail('Tiden kan inte vara före älgarbetets start ('+fmtTid(current.upptag.tid)+').');
+      var vals={};
+      for(var i=0;i<c.fields.length;i++){
+        var fd=c.fields[i],el=$('ev-'+fd.k);
+        if(fd.type==='int'){
+          var n=parseNum(el.value);
+          if(n.bad||(n.v!=null&&n.v%1!==0))return fail(fd.label+' anges som heltal.');
+          vals[fd.k]=n.v;
+        }else{
+          if(fd.req&&!el.value)return fail(fd.msg||('Välj '+fd.label.toLowerCase()+'.'));
+          vals[fd.k]=el.value;
+        }
+      }
+      s.tid=t;for(var k in vals)s[k]=vals[k];delete s.draft;
+      if(c.after)c.after(s);
+      persist();editingEvt=null;renderAlg();
+    });
+    av.addEventListener('click',function(){
+      if(s.draft){removeEvt(c,s);persist()}
+      editingEvt=null;renderAlg();
+    });
+    rm.addEventListener('click',function(){
+      if(!sure){sure=true;rm.textContent=c.onRemove?'Bekräfta (statusbytet tas också bort)':'Bekräfta borttagning';return}
+      removeEvt(c,s);persist();editingEvt=null;renderAlg();
+    });
+    a.appendChild(sv);a.appendChild(av);a.appendChild(rm);f.appendChild(a);
+    return f;
+  }
+  function newEvt(c){
+    var rec={id:c.key.charAt(0)+Date.now(),tid:Math.max(rnd(Date.now()),current.upptag.tid)};
+    c.fields.forEach(function(fd){rec[fd.k]=fd.type==='int'?null:''});
+    if(c.draft)rec.draft=true;
+    if(!current[c.key])current[c.key]=[];
+    current[c.key].push(rec);persist();
+    editingEvt={key:c.key,id:rec.id};renderAlg();
+    var first=$('ev-'+c.fields[0].k);if(first)first.focus();
+  }
+  EVT.forEach(function(c){$(c.btn).addEventListener('click',function(){newEvt(c)})});
+
+  /* Traktbyte */
+  function tbSeg(){var c=algCur();return(c&&c.typ==='Traktbyte')?c:null}
+  function openTb(){
+    var s=tbSeg();if(!s){openAlg();return}
+    $('tb-start').value=fmtTid(s.start);$('tb-err').hidden=true;
+    tbSure=false;$('tb-avbryt').textContent='Avbryt traktbyte';
+    view('tb');tickTb();
+  }
+  function tickTb(){var s=tbSeg();if(!s)return;$('tb-status').textContent='Traktbyte pågår sedan '+fmtTid(s.start)+' · '+fmtDur(Date.now()-s.start)}
+  function saveTbStart(){
+    var s=tbSeg();if(!s)return true;
+    var e=$('tb-err'),st=parseT($('tb-start').value,s.start);
+    if(st==null){e.textContent='Ange starttid.';e.hidden=false;return false}
+    if(st<current.upptag.tid){e.textContent='Starttiden kan inte vara före älgarbetets start ('+fmtTid(current.upptag.tid)+').';e.hidden=false;return false}
+    s.start=st;persist();return true;
+  }
+  $('tb-knapp').addEventListener('click',function(){
+    var c=algCur();
+    if(!(c&&c.typ==='Traktbyte')){
+      current.alg.push({id:'a'+Date.now(),typ:'Traktbyte',start:Math.max(rnd(Date.now()),c?c.start:0)});
+      persist();
+    }
+    openTb();
+  });
+  $('tb-till').addEventListener('click',openTb);
+  $('tb-slapp').addEventListener('click',function(){
+    if(!saveTbStart())return;
+    var s=tbSeg();if(!s)return;
+    current.alg.push({id:'a'+Date.now(),typ:'Sök',start:Math.max(rnd(Date.now()),s.start)});
+    persist();view('sok');renderSok();
+  });
+  $('tb-tillbaka').addEventListener('click',function(){if(saveTbStart())openAlg()});
+  $('tb-avbryt').addEventListener('click',function(){
+    if(!tbSure){tbSure=true;$('tb-avbryt').textContent='Bekräfta: avbryt traktbyte';return}
+    var s=tbSeg();
+    if(s)current.alg=current.alg.filter(function(x){return x.id!==s.id});
+    persist();openAlg();
+  });
+
+  /* Nytt upptag */
+  function nyFail(m){var e=$('ny-err');e.textContent=m;e.hidden=false}
+  function openNyup(id){
+    upNy=(current.nyaUpptag||[]).filter(function(r){return r.id===id})[0];
+    if(!upNy)return;
+    var t=upNy.turId?turById(upNy.turId):null;
+    var dl=$('ny-info');dl.textContent='';
+    if(t)addRows(dl,[['Sökrundan startade',fmtTid(t.ut)]]);
+    dl.hidden=!dl.children.length;
+    $('ny-tid').value=fmtTid(upNy.tid);
+    $('ny-avst').value=upNy.avst!=null?String(upNy.avst):'';
+    $('ny-grupp').value=upNy.grupp!=null?String(upNy.grupp):'';
+    fillSel($('ny-hor'),['Hörbart','Inte hörbart'],upNy.horbart||'');
+    $('ny-err').hidden=true;nySure=false;$('ny-angra').textContent='Ångra upptag';
+    view('nyup');
+  }
+  $('alg-upptag').addEventListener('click',function(){
+    var rec={id:'n'+Date.now(),tid:Math.max(rnd(Date.now()),current.upptag.tid),avst:null,grupp:null,horbart:'',turId:null};
+    if(!current.nyaUpptag)current.nyaUpptag=[];
+    current.nyaUpptag.push(rec);persist();openNyup(rec.id);
+  });
+  $('ny-spara').addEventListener('click',function(){
+    var t=upNy.turId?turById(upNy.turId):null;
+    var tid=parseT($('ny-tid').value,upNy.tid);
+    if(tid==null)return nyFail('Ange tid för upptag.');
+    if(tid<current.upptag.tid)return nyFail('Tiden kan inte vara före första upptaget ('+fmtTid(current.upptag.tid)+').');
+    if(t&&tid<t.ut)return nyFail('Tiden för upptag måste vara efter att sökrundan startade.');
+    var a=pm('ny-avst'),g=pm('ny-grupp');
+    if(a.bad||g.bad)return nyFail('Avstånd anges i hela meter.');
+    upNy.tid=tid;if(t)t.in=tid;
+    upNy.avst=a.v;upNy.grupp=g.v;upNy.horbart=$('ny-hor').value;
+    persist();renderList();openAlg();
+  });
+  $('ny-tillbaka').addEventListener('click',openAlg);
+  $('ny-angra').addEventListener('click',function(){
+    if(!nySure){nySure=true;$('ny-angra').textContent='Bekräfta: ångra upptag';return}
+    var t=upNy.turId?turById(upNy.turId):null;
+    current.nyaUpptag=current.nyaUpptag.filter(function(r){return r.id!==upNy.id});
+    if(t){t.in=null;delete t.nyup}
+    persist();
+    if(t){view('sok');renderSok()}else openAlg();
+  });
+  $('sok-alg').addEventListener('click',openAlg);
+  $('alg-knapp').addEventListener('click',openAlg);
+  $('alg-tillbaka').addEventListener('click',function(){editingAlg=null;renderDetail();view('detalj')});
+
+  /* ---------- Säkerhetskopia ---------- */
+  async function exportBackup(){
+    if(!entries.length){showNotice('Det finns inga prov att spara ännu.');return}
+    var d=new Date(),name='hundprov-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';
+    var text=JSON.stringify({app:'hundprov',version:1,exported:d.toISOString(),entries:entries},null,2);
+    try{
+      var dl=(window.claude&&window.claude.use)?await window.claude.use('downloads'):null;
+      if(dl){await dl.save({filename:name,data:text});showNotice('Säkerhetskopian skickades till nedladdning: '+name);return}
+    }catch(e){showNotice('Säkerhetskopian sparades inte.');return}
+    try{
+      var file=new File([text],name,{type:'application/json'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        try{await navigator.share({files:[file],title:'Hundprov säkerhetskopia'});showNotice('Säkerhetskopian delades: '+name);return}
+        catch(e){if(e&&e.name==='AbortError')return}
+      }
+    }catch(e){}
+    var url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+    var a=mk('a',{href:url,download:name});document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url)},4000);
+    showNotice('Säkerhetskopian sparades som '+name+'.');
+  }
+  function importBackup(file){
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var j=JSON.parse(r.result),arr=Array.isArray(j)?j:j.entries;
+        if(!Array.isArray(arr))throw 0;
+        var added=0,replaced=0;
+        arr.forEach(function(e){
+          if(!e||typeof e.datum!=='string'||typeof e.namn!=='string')return;
+          var it={id:e.datum,namn:e.namn,reg:String(e.reg||''),chip:String(e.chip||''),datum:e.datum,tid:String(e.tid||''),plats:String(e.plats||''),pejl:String(e.pejl||''),idk:!!e.idk,slapp:typeof e.slapp==='number'?e.slapp:null,inkallning:String(e.inkallning||''),upptag:(e.upptag&&typeof e.upptag==='object')?e.upptag:null,alg:Array.isArray(e.alg)?e.alg:[],skall:Array.isArray(e.skall)?e.skall:[],nyaUpptag:Array.isArray(e.nyaUpptag)?e.nyaUpptag:[],kontakt:Array.isArray(e.kontakt)?e.kontakt:[],inkall:Array.isArray(e.inkall)?e.inkall:[],stotning:Array.isArray(e.stotning)?e.stotning:[],turer:Array.isArray(e.turer)?e.turer:[]};
+          var had=entries.some(function(x){return x.id===it.id});
+          entries=entries.filter(function(x){return x.id!==it.id}).concat([it]);
+          if(had)replaced++;else added++;
+        });
+        persist();renderList();
+        showNotice('Läste in '+(added+replaced)+' prov ('+added+' nya, '+replaced+' ersatte prov med samma datum).');
+      }catch(e){showNotice('Filen kunde inte läsas som en säkerhetskopia från den här appen.')}
+    };
+    r.readAsText(file);
+  }
+  $('exportera').addEventListener('click',exportBackup);
+  $('importera').addEventListener('click',function(){$('fil').click()});
+  $('fil').addEventListener('change',function(e){var f=e.target.files[0];if(f)importBackup(f);e.target.value=''});
+
+  /* ---------- Övrigt ---------- */
+  $('ny').addEventListener('click',function(){showNotice('');openForm(null)});
+  $('avbryt').addEventListener('click',function(){var was=editingId;editingId=null;if(was&&current){openEntry(current.id)}else{current=null;view('lista')}});
+  $('tillbaka1').addEventListener('click',function(){current=null;view('lista')});
+  $('redigera').addEventListener('click',function(){openForm(current)});
+  $('ta-bort').addEventListener('click',function(){$('detalj-knappar').hidden=true;$('bekrafta').hidden=false});
+  $('avbryt-ta-bort').addEventListener('click',function(){$('bekrafta').hidden=true;$('detalj-knappar').hidden=false});
+  $('ja-ta-bort').addEventListener('click',function(){
+    var id=current.id;current=null;
+    entries=entries.filter(function(d){return d.id!==id});
+    persist();renderList();view('lista');
+  });
+
+  if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+  load();
+  if(!storageOK)showNotice('Lagring i telefonen är inte tillgänglig här. Uppgifterna försvinner när sidan stängs.');
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+  renderList();view('lista');
+})();
+</script>
+</body>
+</html>
