@@ -4,13 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hundregistrering</title>
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#17352F">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Hundprov">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
 <style>
 :root{
   box-sizing:border-box;
@@ -139,6 +133,7 @@ dl.detail a{color:var(--accent);font-weight:600}
     <!-- Sök -->
     <section id="v-sok" hidden>
       <div id="slapp-box"></div>
+      <p class="summa" id="soktid" hidden></p>
       <div class="field"><label for="inkallning">Inkallning sök</label><select id="inkallning"><option value="">Välj…</option><option value="Godkänt">Godkänt</option><option value="Icke godkänt">Icke godkänt</option></select></div>
       <button type="button" class="primary big" id="ut-in"></button>
       <button type="button" class="big" id="upptag-knapp" hidden>Upptag</button>
@@ -168,9 +163,15 @@ dl.detail a{color:var(--accent);font-weight:600}
         <button type="button" id="kontakt-knapp">Älgkontakt / skottillfälle</button>
         <button type="button" id="inkall-knapp">Inkallning</button>
         <button type="button" id="tb-knapp">Traktbyte</button>
+        <button type="button" id="hk-knapp">Hunden tar kontakt</button>
       </div>
       <button type="button" class="big" id="alg-upptag" hidden>Upptag</button>
       <button type="button" class="big" id="tb-till" hidden>Till traktbyte</button>
+      <button type="button" class="big danger" id="avslut-knapp">Avslut av prov</button>
+      <div class="summa" id="avslut-box" hidden>
+        <p id="avslut-text" style="margin:0 0 10px;font-weight:600"></p>
+        <button type="button" class="danger" id="avslut-angra">Ångra avslut</button>
+      </div>
       <h2 class="sub">Perioder</h2>
       <ul class="turer" id="alg-lista"></ul>
       <p class="empty" id="alg-tom">Ingen status vald ännu. Välj status i listan ovan.</p>
@@ -180,6 +181,8 @@ dl.detail a{color:var(--accent);font-weight:600}
       <ul class="turer" id="kontakt-lista"></ul>
       <h2 class="sub" id="h-inkall" hidden>Inkallning under älgarbete</h2>
       <ul class="turer" id="inkall-lista"></ul>
+      <h2 class="sub" id="h-hkontakt" hidden>Hunden tar kontakt</h2>
+      <ul class="turer" id="hkontakt-lista"></ul>
       <h2 class="sub" id="h-skall" hidden>Skallräkningar</h2>
       <ul class="turer" id="skall-lista"></ul>
       <h2 class="sub">Upptag</h2>
@@ -363,6 +366,13 @@ dl.detail a{color:var(--accent);font-weight:600}
   </div>
 </div>
 
+<div class="overlay" id="dlg" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="dlg-rubrik">
+    <h2 id="dlg-rubrik" style="margin:0 0 12px"></h2>
+    <div id="dlg-body"></div>
+  </div>
+</div>
+
 
 <script>
 (function(){
@@ -378,14 +388,21 @@ dl.detail a{color:var(--accent);font-weight:600}
   function mk(tag,attrs,text){var e=document.createElement(tag);if(attrs)for(var k in attrs){if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k])}if(text!=null)e.textContent=text;return e}
 
   var NIVA=['Mycket effektivt','Effektivt','Lite effektivt','Mindre effektivt','Ineffektivt'];
-  var ALG=['Fast stånd','Gångstånd','Förföljande','Sök','Återgång','Övrigt'];
+  var FG='Fast stånd/Gångstånd';
+  var ALG=['Fast stånd','Gångstånd',FG,'Förföljande','Sök','Återgång','Övrigt'];
+  var LOP=['Förföljande','Gångstånd','Återgång',FG];   // statusar där löpsträcka anges när de lämnas
+  var H=3600000,SOK_GRUND=4*H;
+  function needsLeave(typ){return LOP.indexOf(typ)>=0}
   function rnd(ms){return Math.round(ms/60000)*60000}
   function traktMs(e){
     var l=(e.alg||[]).slice().sort(function(a,b){return a.start-b.start}),tot=0;
-    l.forEach(function(s,i){if(s.typ==='Traktbyte'){var end=l[i+1]?l[i+1].start:Date.now();tot+=Math.max(0,end-s.start)}});
+    l.forEach(function(s,i){if(s.typ==='Traktbyte'){var end=l[i+1]?l[i+1].start:(e.avslut||Date.now());tot+=Math.max(0,end-s.start)}});
     return tot;
   }
-  function algSlut(e){return e.upptag.tid+5*3600000+traktMs(e)}
+  function algSlut(e){return e.upptag.tid+5*H+traktMs(e)}
+  function algWorked(e){return Math.max(0,(e.avslut||Date.now())-e.upptag.tid-traktMs(e))}
+  function sokEnd(e){return e.upptag?e.upptag.tid:(e.sokSlut||null)}
+  var KEY3='hundprov:ui',curView='lista',restoring=false;
   function fillSel(sel,opts,val){
     sel.textContent='';sel.appendChild(mk('option',{value:''},'Välj…'));
     opts.forEach(function(o){var op=mk('option',{value:o},o);if(o===val)op.selected=true;sel.appendChild(op)});
@@ -428,7 +445,55 @@ dl.detail a{color:var(--accent);font-weight:600}
     if(name==='sok'){timerId=setInterval(tick,1000)}
     if(name==='alg'){timerId=setInterval(tickAlg,1000)}
     if(name==='tb'){timerId=setInterval(tickTb,1000)}
+    curView=name;
     window.scrollTo(0,0);
+    saveUi();
+  }
+
+  /* ---------- Kom ihåg var man var ---------- */
+  var FORMF=['namn','reg','chip','agare','tel','plats','pejl','datum','tid','slapp'];
+  function saveUi(){
+    if(restoring)return;
+    try{
+      var u={v:curView,id:current?current.id:null,ib:infoBack,ny:upNy?upNy.id:null,ed:editingId,y:Math.round(window.scrollY||0),
+             anm:!$('anm').hidden,anmT:$('anm-text').value,anmAt:anmOpenedAt};
+      if(curView==='form'){u.form={};FORMF.forEach(function(k){u.form[k]=$(k).value});u.form.idk=$('idk').checked}
+      localStorage.setItem(KEY3,JSON.stringify(u));
+    }catch(e){}
+  }
+  var scrollT=null;
+  window.addEventListener('scroll',function(){clearTimeout(scrollT);scrollT=setTimeout(saveUi,300)},{passive:true});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')saveUi()});
+  window.addEventListener('pagehide',saveUi);
+  function byId(id){return entries.filter(function(d){return d.id===id})[0]||null}
+  function restoreUi(){
+    var u=null;
+    try{u=JSON.parse(localStorage.getItem(KEY3)||'null')}catch(e){}
+    if(!u||!u.v)return false;
+    restoring=true;
+    try{
+      var e=u.id?byId(u.id):null;
+      if(u.v==='form'){
+        current=e;var ed=u.ed?byId(u.ed):null;
+        restoring=false;openForm(ed);restoring=true;
+        if(u.form){FORMF.forEach(function(k){if(u.form[k]!=null)$(k).value=u.form[k]});$('idk').checked=!!u.form.idk}
+      }else if(!e||u.v==='lista'){current=null;view('lista')}
+      else{
+        current=e;
+        if(u.v==='sok'&&e.slapp){view('sok');renderSok()}
+        else if(u.v==='upptag'&&e.upptag)openUpptag();
+        else if(u.v==='alg'&&e.upptag)openAlg();
+        else if(u.v==='nyup'&&e.upptag){openNyup(u.ny);if($('v-nyup').hidden)openAlg()}
+        else if(u.v==='tb'&&e.upptag)openTb();
+        else if(u.v==='info'){infoBack=u.ib||'detalj';openInfo(infoBack)}
+        else openEntry(e.id);
+      }
+      if(u.anm){$('anm-text').value=u.anmT||'';anmOpenedAt=u.anmAt||Date.now();anmCtx=current?current.id:'';openAnm()}
+      var y=u.y||0;
+      if(y)setTimeout(function(){window.scrollTo(0,y)},60);
+    }catch(err){current=null;restoring=false;view('lista')}
+    restoring=false;saveUi();
+    return true;
   }
 
   function renderList(){
@@ -447,7 +512,7 @@ dl.detail a{color:var(--accent);font-weight:600}
   function renderDetail(){
     var dl=$('detalj');dl.textContent='';
     $('sok').textContent=current.slapp?'Till sök':'Släpp';$('alg-knapp').hidden=!current.upptag;
-    [['Namn',current.namn],['Registreringsnummer',current.reg],['Chipnummer',current.chip],['Ägare',current.agare||'–'],['Telefon',current.tel||'–',current.tel?'tel:'+current.tel.replace(/[^\d+]/g,''):null],['Provdatum',fmtDatum(current.datum)],['Tid',current.tid],['Provplats',current.plats||'–'],['Hundpejl',current.pejl||'–'],['ID kontrollerat',current.idk?'Ja':'Nej'],['Släpptid',current.slapp?fmtTid(current.slapp):'–'],['Inkallning sök',current.inkallning||'–'],['Provinformation',infoFilled(current)?'Ifylld':'Ej ifylld'],['Anteckningar',String((current.anteckningar||[]).length)],['Sökturer',String(current.turer.length)]].concat(current.upptag?[['Älgarbete start',fmtTid(current.upptag.tid)],['Älgarbetets status',(algCur()||{}).typ||'–'],['Provet slutar',fmtTid(algSlut(current))]]:[]).forEach(function(r){
+    [['Namn',current.namn],['Registreringsnummer',current.reg],['Chipnummer',current.chip],['Ägare',current.agare||'–'],['Telefon',current.tel||'–',current.tel?'tel:'+current.tel.replace(/[^\d+]/g,''):null],['Provdatum',fmtDatum(current.datum)],['Tid',current.tid],['Provplats',current.plats||'–'],['Hundpejl',current.pejl||'–'],['ID kontrollerat',current.idk?'Ja':'Nej'],['Släpptid',current.slapp?fmtTid(current.slapp):'–'],['Inkallning sök',current.inkallning||'–'],['Provinformation',infoFilled(current)?'Ifylld':'Ej ifylld'],['Anteckningar',String((current.anteckningar||[]).length)],['Sökturer',String(current.turer.length)]].concat(current.slapp?[['Söktid',sokText(current)]]:[]).concat(current.upptag?[['Älgarbete start',fmtTid(current.upptag.tid)],['Älgarbetets status',current.avslut?'Provet avslutat':((algCur()||{}).typ||'–')],current.avslut?['Provet avslutades',fmtTid(current.avslut)+' · älgarbetstid '+fmtDur(algWorked(current))]:['Provet slutar',fmtTid(algSlut(current))]]:[]).forEach(function(r){
       dl.appendChild(mk('dt',null,r[0]));
       var dd=mk('dd',null,r[1]);
       if(r[2]){dd.textContent='';dd.appendChild(mk('a',{href:r[2]},r[1]))}
@@ -476,6 +541,8 @@ dl.detail a{color:var(--accent);font-weight:600}
     $(id).setAttribute('aria-invalid',ok?'false':'true');
     var e=$('e-'+id);e.hidden=ok;e.textContent=ok?'':(text||msgs[id]);
   }
+  $('f').addEventListener('input',function(){saveUi()});
+  $('f').addEventListener('change',function(){saveUi()});
   $('chip').addEventListener('input',function(e){e.target.value=e.target.value.replace(/\D/g,'').slice(0,15)});
   $('reg').addEventListener('input',function(e){e.target.value=e.target.value.toUpperCase()});
 
@@ -494,7 +561,8 @@ dl.detail a{color:var(--accent);font-weight:600}
     if(!ok){$(first).focus();return}
     var old=entries.filter(function(d){return d.id===editingId})[0];
     var slv=$('slapp').value.trim(),sl=slv?parseT(slv,new Date($('datum').value+'T12:00:00').getTime()):null;
-    var data={id:$('datum').value,namn:$('namn').value.trim(),reg:$('reg').value.trim(),chip:$('chip').value.trim(),datum:$('datum').value,tid:$('tid').value,agare:$('agare').value.trim(),tel:$('tel').value.trim(),plats:$('plats').value.trim(),pejl:$('pejl').value.trim(),idk:$('idk').checked,info:old?(old.info||null):null,anteckningar:old?(old.anteckningar||[]):[],slapp:sl,inkallning:old?(old.inkallning||''):'',upptag:old?(old.upptag||null):null,alg:old?(old.alg||[]):[],skall:old?(old.skall||[]):[],nyaUpptag:old?(old.nyaUpptag||[]):[],kontakt:old?(old.kontakt||[]):[],inkall:old?(old.inkall||[]):[],stotning:old?(old.stotning||[]):[],turer:old?old.turer:[]};
+    var data=Object.assign({info:null,anteckningar:[],inkallning:'',upptag:null,alg:[],skall:[],nyaUpptag:[],kontakt:[],inkall:[],stotning:[],hkontakt:[],turer:[]},old||{},
+      {id:$('datum').value,namn:$('namn').value.trim(),reg:$('reg').value.trim(),chip:$('chip').value.trim(),datum:$('datum').value,tid:$('tid').value,agare:$('agare').value.trim(),tel:$('tel').value.trim(),plats:$('plats').value.trim(),pejl:$('pejl').value.trim(),idk:$('idk').checked,slapp:sl});
     entries=entries.filter(function(d){return d.id!==editingId&&d.id!==data.id}).concat([data]);
     persist();
     current=data;editingId=null;renderList();renderDetail();view('detalj');
@@ -506,6 +574,16 @@ dl.detail a{color:var(--accent);font-weight:600}
   function tick(){
     var o=openTur();
     $('timer').textContent=o?'Ute sedan '+fmtTid(o.ut)+' · '+fmtDur(Date.now()-o.ut):'';
+    var st=$('soktid');st.hidden=!current.slapp;
+    if(current.slapp)st.textContent='Söktid: '+sokText(current);
+  }
+  function sokText(e){
+    if(!e.slapp)return '–';
+    var end=sokEnd(e),max=e.sokMax||SOK_GRUND;
+    if(e.upptag)return fmtTid(e.slapp)+'–'+fmtTid(end)+' ('+fmtDur(end-e.slapp)+') · avslutad vid upptag';
+    if(end)return fmtTid(e.slapp)+'–'+fmtTid(end)+' ('+fmtDur(end-e.slapp)+') · söktiden är slut';
+    var left=e.slapp+max-Date.now();
+    return 'sedan '+fmtTid(e.slapp)+' · '+fmtDur(Date.now()-e.slapp)+' · slutar '+fmtTid(e.slapp+max)+(max>SOK_GRUND?' (förlängd 1 h)':'')+(left>0?' · återstår '+fmtDur(left):'');
   }
   function parseT(str,base){
     var m=/^(\d{2}):(\d{2})(?::(\d{2}))?$/.exec((str||'').trim());
@@ -524,7 +602,7 @@ dl.detail a{color:var(--accent);font-weight:600}
     var b=$('ut-in');
     b.textContent=o?'In – hunden är tillbaka':'Ut – hunden går ut';
     renderSlapp();$('inkallning').value=current.inkallning||'';
-    var upp=current.upptag,ac=upp?algCur():null,sokOk=!upp||(ac&&ac.typ==='Sök');
+    var upp=current.upptag,ac=upp?algCur():null,sokOk=!current.avslut&&(!upp||(ac&&ac.typ==='Sök'));
     $('ut-in').hidden=!(o||sokOk);$('upptag-knapp').hidden=!o;$('upptag-knapp').textContent='Upptag';$('sok-alg').hidden=!upp;$('sok-alg').textContent='Till älgarbete'+(ac?' · status: '+ac.typ:'');
     tick();
     var list=sorted(),ul=$('turer');ul.textContent='';
@@ -719,7 +797,7 @@ dl.detail a{color:var(--accent);font-weight:600}
   $('up-angra').addEventListener('click',function(){
     if(!upSure){upSure=true;$('up-angra').textContent=hasAlgData()?'Bekräfta: ångra upptag och radera älgarbetet':'Bekräfta: ångra upptag';return}
     var t=turById(current.upptag.turId);
-    t.in=null;delete t.upptag;current.upptag=null;current.alg=[];current.skall=[];current.nyaUpptag=[];current.kontakt=[];current.inkall=[];current.stotning=[];
+    t.in=null;delete t.upptag;current.upptag=null;current.alg=[];current.skall=[];current.nyaUpptag=[];current.kontakt=[];current.inkall=[];current.stotning=[];current.hkontakt=[];delete current.avslut;
     current.turer.forEach(function(x){delete x.nyup});
     persist();view('sok');renderSok();
   });
@@ -738,20 +816,21 @@ dl.detail a{color:var(--accent);font-weight:600}
      draft:true,
      after:function(s){
        var seg=current.alg.filter(function(x){return x.stot===s.id})[0];
-       if(seg){seg.typ=s.status;seg.start=s.tid}
-       else current.alg.push({id:'a'+Date.now(),typ:s.status,start:s.tid,stot:s.id});
+       if(seg){seg.typ=s.status;seg.start=s.tid;if(seg.typ==='Övrigt'&&!seg.text)seg.pendText=true}
+       else pushSeg({id:'a'+Date.now(),typ:s.status,start:s.tid,stot:s.id});
      },
      onRemove:function(s){current.alg=(current.alg||[]).filter(function(x){return x.stot!==s.id})}},
     {key:'kontakt',label:'Älgkontakt / skottillfälle',head:'h-kontakt',ul:'kontakt-lista',btn:'kontakt-knapp',
      fields:[{k:'typ',label:'Typ av älgar',type:'sel',opts:ELG}]},
     {key:'inkall',label:'Inkallning',head:'h-inkall',ul:'inkall-lista',btn:'inkall-knapp',
      fields:[{k:'val',label:'Inkallning',type:'sel',opts:INK}]},
+    {key:'hkontakt',label:'Hunden tar kontakt',head:'h-hkontakt',ul:'hkontakt-lista',btn:'hk-knapp',fields:[]},
     {key:'skall',label:'Skallräkning',head:'h-skall',ul:'skall-lista',btn:'skall-knapp',
      fields:[{k:'antal',label:'Antal skall per minut',type:'int'},
              {k:'hor',label:'Hörbarhet',type:'sel',opts:HOR},
              {k:'typ',label:'Skallets karaktär',type:'sel',opts:SKALL}]}
   ];
-  function hasAlgData(){return ['alg','skall','nyaUpptag','kontakt','inkall','stotning'].some(function(k){return current[k]&&current[k].length})}
+  function hasAlgData(){return ['alg','skall','nyaUpptag','kontakt','inkall','stotning','hkontakt'].some(function(k){return current[k]&&current[k].length})}
   function openAlg(){editingAlg=null;editingEvt=null;view('alg');renderAlg()}
   function algList(){if(!current.alg)current.alg=[];return current.alg.slice().sort(function(a,b){return a.start-b.start})}
   function algCur(){var l=algList();return l[l.length-1]}
@@ -762,18 +841,45 @@ dl.detail a{color:var(--accent);font-weight:600}
   function tickAlg(){
     if(!current||!current.upptag)return;
     var c=algCur(),now=Date.now(),slut=algSlut(current),left=slut-now;
+    if(current.avslut){
+      $('alg-badge-namn').textContent='Provet avslutat';
+      $('alg-badge-sedan').textContent='kl. '+fmtTid(current.avslut)+(c?' · sista status: '+c.typ:'');
+      $('alg-status').textContent='Älgarbetstid: '+fmtDur(algWorked(current));
+      $('avslut-text').textContent='Provet avslutades kl. '+fmtTid(current.avslut)+' efter '+fmtDur(algWorked(current))+' älgarbete.';
+      return;
+    }
     $('alg-badge-namn').textContent=c?c.typ:'Ingen vald';
     $('alg-badge-sedan').textContent=c?'sedan '+fmtTid(c.start)+' · '+fmtDur(now-c.start):'Välj status i listan nedan';
-    $('alg-status').textContent='Provet slutar '+fmtTid(slut)+(left>0?' · återstår '+fmtDur(left):' · tiden är slut');
+    $('alg-status').textContent='Älgarbetstid '+fmtDur(algWorked(current))+' · provet slutar '+fmtTid(slut)+(left>0?' · återstår '+fmtDur(left):' · tiden är slut');
+  }
+  /* Nytt statusbyte. Markerar vad som måste fyllas i för den status som lämnas och den nya. */
+  function pushSeg(seg){
+    var prev=algCur();
+    current.alg.push(seg);
+    if(prev&&prev!==seg&&needsLeave(prev.typ)&&!prev.leaveDone)prev.pendLeave=true;
+    if(seg.typ==='Övrigt'&&!seg.text)seg.pendText=true;
   }
   $('alg-sel').addEventListener('change',function(e){
     var typ=e.target.value;
     if(!typ){renderAlg();return}
     var c=algCur();
     if(c&&c.typ===typ)return;
-    current.alg.push({id:'a'+Date.now(),typ:typ,start:Math.max(rnd(Date.now()),c?c.start:0)});
-    persist();editingAlg=null;renderAlg();
+    pushSeg({id:'a'+Date.now(),typ:typ,start:Math.max(rnd(Date.now()),c?c.start:0)});
+    persist();editingAlg=null;renderAlg();checkDialogs();
   });
+  function segEnd(s){var l=algList(),i=l.indexOf(s);return l[i+1]?l[i+1].start:(current.avslut||null)}
+  function segRows(s,end){
+    var r=[];
+    if(end==null)return r;
+    var durMin=Math.round((end-s.start)/60000);
+    if(s.typ===FG){
+      if(s.fast!=null){r.push(['Fast stånd',fmtDur(s.fast*60000)]);r.push(['Gångstånd',fmtDur(Math.max(0,durMin-s.fast)*60000)])}
+      else r.push(['Fast stånd','saknas']);
+    }
+    if(needsLeave(s.typ))r.push(['Löpsträcka',s.lop!=null?nf(s.lop,0,0)+' m':'saknas']);
+    if(s.typ==='Återgång')r.push(['Kopplingsbar',s.koppl==null?'saknas':(s.koppl?'Ja':'Nej')]);
+    return r;
+  }
   function renderAlg(){
     var l=algList(),cur=l[l.length-1],inTb=!!(cur&&cur.typ==='Traktbyte');
     var sel=$('alg-sel');sel.textContent='';
@@ -781,22 +887,28 @@ dl.detail a{color:var(--accent);font-weight:600}
     ALG.forEach(function(typ){var op=mk('option',{value:typ},typ);if(cur&&cur.typ===typ)op.selected=true;sel.appendChild(op)});
     if(inTb){var tbo=mk('option',{value:'Traktbyte'},'Traktbyte');tbo.selected=true;sel.appendChild(tbo)}
     if(!cur)sel.value='';
-    sel.disabled=inTb;
-    $('alg-extra').hidden=inTb;
-    $('tb-till').hidden=!inTb;
-    $('alg-upptag').hidden=!(cur&&cur.typ==='Återgång');
+    var done=!!current.avslut;
+    sel.disabled=inTb||done;
+    sel.parentNode.hidden=done;
+    $('alg-extra').hidden=inTb||done;
+    $('tb-till').hidden=!inTb||done;
+    $('alg-upptag').hidden=done||!(cur&&cur.typ==='Återgång');
+    $('avslut-knapp').hidden=done;
+    $('avslut-box').hidden=!done;
+    avSure=false;$('avslut-angra').textContent='Ångra avslut';
 
     /* Perioder */
     var ul=$('alg-lista');ul.textContent='';
     $('alg-tom').hidden=l.length>0;
-    l.map(function(s,i){return{s:s,end:l[i+1]?l[i+1].start:null}}).reverse().forEach(function(x){
+    l.map(function(s,i){return{s:s,end:l[i+1]?l[i+1].start:(current.avslut||null)}}).reverse().forEach(function(x){
       var s=x.s,li=mk('li');
       li.appendChild(mk('h3',null,s.typ));
       if(editingAlg===s.id){li.appendChild(algForm(s))}
       else{
         var dl=mk('dl');
-        addRows(dl,[['Start',fmtTid(s.start)],['Slut',x.end!=null?fmtTid(x.end):null],['Tid',fmtDur((x.end!=null?x.end:Date.now())-s.start)]]);
+        addRows(dl,[['Start',fmtTid(s.start)],['Slut',x.end!=null?fmtTid(x.end):null],['Tid',fmtDur((x.end!=null?x.end:Date.now())-s.start)]].concat(segRows(s,x.end)));
         li.appendChild(dl);
+        if(s.typ==='Övrigt')li.appendChild(s.text?mk('p',{class:'notering'},s.text):mk('p',{class:'hint'},'Förklaring saknas. Tryck på Redigera.'));
         var bt=mk('button',{type:'button'},'Redigera');
         bt.addEventListener('click',function(){editingAlg=s.id;renderAlg()});
         li.appendChild(bt);
@@ -825,8 +937,18 @@ dl.detail a{color:var(--accent);font-weight:600}
   }
   function algForm(s){
     var f=mk('div'),tb=s.typ==='Traktbyte';
-    if(!tb)f.appendChild(field('Typ',selectEl('al-typ',ALG,s.typ)));
+    var typSel=tb?null:selectEl('al-typ',ALG,s.typ);
+    if(!tb)f.appendChild(field('Typ',typSel));
     f.appendChild(field(tb?'Starttid för traktbyte':'Starttid',mk('input',{id:'al-start',type:'time',value:fmtTid(s.start)}),tb?'Traktbytet slutar när nästa period börjar':null));
+    var ex=mk('div');f.appendChild(ex);
+    function buildEx(){
+      ex.textContent='';var typ=tb?'Traktbyte':typSel.value;
+      if(typ===FG)ex.appendChild(field('Fast stånd',mk('input',{id:'al-fast',type:'text',inputmode:'numeric',autocomplete:'off',value:s.fast!=null?String(s.fast):''}),'Hela minuter. Resten av tiden räknas som gångstånd.'));
+      if(needsLeave(typ))ex.appendChild(field('Löpsträcka',mk('input',{id:'al-lop',type:'text',inputmode:'numeric',autocomplete:'off',value:s.lop!=null?String(s.lop):''}),'I meter'));
+      if(typ==='Återgång')ex.appendChild(checkField('al-koppl','Hunden var kopplingsbar',!!s.koppl));
+      if(typ==='Övrigt')ex.appendChild(field('Förklaring',mk('textarea',{id:'al-text',rows:'3'},s.text||'')));
+    }
+    buildEx();if(typSel)typSel.addEventListener('change',buildEx);
     var err=mk('p',{class:'err',hidden:''});f.appendChild(err);
     var a=mk('div',{class:'actions'});
     var sv=mk('button',{type:'button',class:'primary grow'},'Spara');
@@ -838,6 +960,17 @@ dl.detail a{color:var(--accent);font-weight:600}
       var typ=tb?'Traktbyte':$('al-typ').value;if(!typ)return fail('Välj typ.');
       var st=parseT($('al-start').value,s.start);if(st==null)return fail('Ange starttid.');
       if(st<current.upptag.tid)return fail('Starttiden kan inte vara före älgarbetets start ('+fmtTid(current.upptag.tid)+').');
+      var end=segEnd(s),fast=null,lop=null;
+      if(typ===FG){
+        fast=pm('al-fast');if(fast.bad)return fail('Fast stånd anges i hela minuter.');
+        if(fast.v!=null&&end!=null&&fast.v>Math.round((end-st)/60000))return fail('Fast stånd kan inte vara längre än hela perioden ('+fmtDur(end-st)+').');
+      }
+      if(needsLeave(typ)){lop=pm('al-lop');if(lop.bad)return fail('Löpsträckan anges i hela meter.')}
+      if(typ===FG)s.fast=fast.v;
+      if(needsLeave(typ))s.lop=lop.v;
+      if(typ==='Återgång')s.koppl=$('al-koppl').checked;
+      if(typ==='Övrigt'){s.text=$('al-text').value.trim();delete s.pendText}
+      if(needsLeave(typ)&&end!=null){s.leaveDone=true;delete s.pendLeave}
       s.typ=typ;s.start=st;
       if(s.stot){var r=(current.stotning||[]).filter(function(x){return x.id===s.stot})[0];if(r){r.tid=st;r.status=typ}}
       persist();editingAlg=null;renderAlg();
@@ -926,6 +1059,12 @@ dl.detail a{color:var(--accent);font-weight:600}
     if(c.draft)rec.draft=true;
     if(!current[c.key])current[c.key]=[];
     current[c.key].push(rec);persist();
+    if(!c.fields.length){
+      editingEvt=null;renderAlg();
+      var b=$(c.btn);b.textContent='Registrerat kl. '+fmtTid(rec.tid);
+      setTimeout(function(){b.textContent=c.label},2500);
+      return;
+    }
     editingEvt={key:c.key,id:rec.id};renderAlg();
     var first=$('ev-'+c.fields[0].k);if(first)first.focus();
   }
@@ -950,18 +1089,164 @@ dl.detail a{color:var(--accent);font-weight:600}
   $('tb-knapp').addEventListener('click',function(){
     var c=algCur();
     if(!(c&&c.typ==='Traktbyte')){
-      current.alg.push({id:'a'+Date.now(),typ:'Traktbyte',start:Math.max(rnd(Date.now()),c?c.start:0)});
+      pushSeg({id:'a'+Date.now(),typ:'Traktbyte',start:Math.max(rnd(Date.now()),c?c.start:0)});
       persist();
     }
-    openTb();
+    openTb();checkDialogs();
   });
   $('tb-till').addEventListener('click',openTb);
   $('tb-slapp').addEventListener('click',function(){
     if(!saveTbStart())return;
     var s=tbSeg();if(!s)return;
-    current.alg.push({id:'a'+Date.now(),typ:'Sök',start:Math.max(rnd(Date.now()),s.start)});
+    pushSeg({id:'a'+Date.now(),typ:'Sök',start:Math.max(rnd(Date.now()),s.start)});
     persist();view('sok');renderSok();
   });
+
+  /* Avslut av prov */
+  var avSure=false;
+  function doAvslut(){
+    var c=algCur(),now=rnd(Date.now());
+    current.avslut=Math.max(now,c?c.start:current.upptag.tid,current.upptag.tid);
+    if(c&&needsLeave(c.typ)&&!c.leaveDone)c.pendLeave=true;
+    persist();editingAlg=null;editingEvt=null;renderAlg();window.scrollTo(0,0);checkDialogs();
+  }
+  $('avslut-knapp').addEventListener('click',function(){
+    var w=algWorked(current);
+    if(w>=5*H){doAvslut();return}
+    openDlg('Avsluta provet?',function(box,close){
+      box.appendChild(mk('p',{style:'margin:0 0 16px'},'Älgarbetet har bara pågått '+fmtDur(w)+' av 5 timmar. Vill du avbryta provet ändå?'));
+      var a=mk('div',{class:'actions'});
+      var ja=mk('button',{type:'button',class:'primary grow'},'Ja, avsluta provet');
+      var nej=mk('button',{type:'button'},'Nej, fortsätt');
+      ja.addEventListener('click',function(){close();doAvslut()});
+      nej.addEventListener('click',close);
+      a.appendChild(ja);a.appendChild(nej);box.appendChild(a);
+    });
+  });
+  $('avslut-angra').addEventListener('click',function(){
+    if(!avSure){avSure=true;$('avslut-angra').textContent='Bekräfta: ångra avslut';return}
+    delete current.avslut;
+    var c=algCur();if(c)delete c.pendLeave;
+    persist();renderAlg();
+  });
+
+  /* ---------- Frågerutor ---------- */
+  var dlgOpen=false,dlgFocus=null;
+  function openDlg(title,build){
+    dlgFocus=document.activeElement;
+    var box=$('dlg-body');box.textContent='';$('dlg-rubrik').textContent=title;
+    dlgOpen=true;$('dlg').hidden=false;
+    document.querySelector('main').inert=true;$('anm-knapp').inert=true;
+    build(box,closeDlg);
+    var f=box.querySelector('input,textarea,select,button');if(f)f.focus();
+  }
+  function closeDlg(){
+    dlgOpen=false;$('dlg').hidden=true;
+    document.querySelector('main').inert=false;$('anm-knapp').inert=false;
+    if(dlgFocus&&dlgFocus.focus&&document.contains(dlgFocus))dlgFocus.focus();
+  }
+  function checkField(id,label,checked){
+    var w=mk('div',{class:'field'}),l=mk('label',{class:'check',for:id});
+    var c=mk('input',{id:id,type:'checkbox'});c.checked=checked;
+    l.appendChild(c);l.appendChild(document.createTextNode(' '+label));w.appendChild(l);return w;
+  }
+  function refreshView(){
+    if(!current)return;
+    if(curView==='alg')renderAlg();
+    else if(curView==='detalj')renderDetail();
+    else if(curView==='sok')tick();
+  }
+  function dlgButtons(box,onSave,onLater,saveText){
+    var a=mk('div',{class:'actions'});
+    var sv=mk('button',{type:'button',class:'primary grow'},saveText||'Spara');
+    var lt=mk('button',{type:'button'},'Fyll i senare');
+    sv.addEventListener('click',onSave);lt.addEventListener('click',onLater);
+    a.appendChild(sv);a.appendChild(lt);box.appendChild(a);
+  }
+  /* Lämnar en status: fast stånd-minuter, löpsträcka, kopplingsbar */
+  function askLeave(s){
+    var end=segEnd(s);if(end==null){delete s.pendLeave;return}
+    var durMin=Math.round((end-s.start)/60000),fg=s.typ===FG;
+    openDlg('Status '+s.typ+' avslutad',function(box,close){
+      box.appendChild(mk('p',{style:'margin:0 0 16px'},s.typ+' pågick '+fmtTid(s.start)+'–'+fmtTid(end)+' ('+fmtDur(end-s.start)+').'));
+      var fastIn,gangP,lopIn,kopIn;
+      if(fg){
+        fastIn=mk('input',{id:'dl-fast',type:'text',inputmode:'numeric',autocomplete:'off',value:s.fast!=null?String(s.fast):''});
+        box.appendChild(field('Hur länge var det fast stånd?',fastIn,'I hela minuter, högst '+durMin+'. Resten fylls i som gångstånd.'));
+        gangP=mk('p',{class:'summa'},'Gångstånd: –');box.appendChild(gangP);
+        var upd=function(){var r=parseNum(fastIn.value);gangP.textContent=(r.v!=null&&!r.bad&&r.v%1===0&&r.v<=durMin)?'Fast stånd '+fmtDur(r.v*60000)+' · gångstånd '+fmtDur((durMin-r.v)*60000):'Gångstånd: –'};
+        fastIn.addEventListener('input',upd);upd();
+      }
+      lopIn=mk('input',{id:'dl-lop',type:'text',inputmode:'numeric',autocomplete:'off',value:s.lop!=null?String(s.lop):''});
+      box.appendChild(field(fg?'Löpsträcka under gångståndet':'Löpsträcka',lopIn,'I meter'));
+      if(s.typ==='Återgång'){kopIn=checkField('dl-koppl','Hunden var kopplingsbar',!!s.koppl);box.appendChild(kopIn)}
+      var err=mk('p',{class:'err',hidden:''});box.appendChild(err);
+      function fail(m){err.textContent=m;err.hidden=false}
+      dlgButtons(box,function(){
+        var fast=null;
+        if(fg){
+          fast=parseNum(fastIn.value);
+          if(fast.v==null)return fail('Ange hur många minuter det var fast stånd.');
+          if(fast.bad||fast.v%1!==0)return fail('Fast stånd anges i hela minuter.');
+          if(fast.v>durMin)return fail('Fast stånd kan inte vara längre än '+durMin+' minuter.');
+        }
+        var lop=parseNum(lopIn.value);
+        if(lop.bad||(lop.v!=null&&lop.v%1!==0))return fail('Löpsträckan anges i hela meter.');
+        var lopKrav=!(fg&&fast.v===durMin);
+        if(lopKrav&&lop.v==null)return fail('Ange löpsträckan i meter.');
+        if(fg)s.fast=fast.v;
+        s.lop=lop.v;
+        if(s.typ==='Återgång')s.koppl=$('dl-koppl').checked;
+        s.leaveDone=true;delete s.pendLeave;
+        persist();close();refreshView();checkDialogs();
+      },function(){delete s.pendLeave;persist();close();refreshView();checkDialogs()});
+    });
+  }
+  /* Övrigt: förklaring */
+  function askText(s){
+    openDlg('Övrigt',function(box,close){
+      var ta=mk('textarea',{id:'dl-text',rows:'4'},s.text||'');
+      box.appendChild(field('Förklaring',ta,'Beskriv vad som händer'));
+      var err=mk('p',{class:'err',hidden:''});box.appendChild(err);
+      dlgButtons(box,function(){
+        var t=ta.value.trim();
+        if(!t){err.textContent='Skriv en förklaring.';err.hidden=false;return}
+        s.text=t;delete s.pendText;persist();close();refreshView();checkDialogs();
+      },function(){delete s.pendText;persist();close();refreshView();checkDialogs()});
+    });
+  }
+  /* Söktid: fråga om förlängning efter 4 timmar */
+  function askSok(e){
+    openDlg('Söktiden har gått i 4 timmar',function(box,close){
+      box.appendChild(mk('p',{style:'margin:0 0 16px'},e.namn+': söktiden startade '+fmtTid(e.slapp)+' och har nu pågått '+fmtDur(Date.now()-e.slapp)+'. Vill du förlänga söktiden med en timme?'));
+      var a=mk('div',{class:'actions'});
+      var ja=mk('button',{type:'button',class:'primary grow'},'Ja, förläng 1 timme');
+      var nej=mk('button',{type:'button'},'Nej, avsluta söktiden');
+      ja.addEventListener('click',function(){e.sokMax=SOK_GRUND+H;persist();close();refreshView()});
+      nej.addEventListener('click',function(){e.sokSlut=e.slapp+SOK_GRUND;persist();close();refreshView()});
+      a.appendChild(ja);a.appendChild(nej);box.appendChild(a);
+    });
+  }
+  function checkDialogs(){
+    if(dlgOpen||!$('anm').hidden)return;
+    if(current&&current.upptag&&current.alg){
+      var l=algList();
+      for(var i=0;i<l.length;i++){
+        if(l[i].pendLeave&&segEnd(l[i])!=null){askLeave(l[i]);return}
+        if(l[i].pendText){askText(l[i]);return}
+      }
+    }
+    var now=Date.now();
+    for(var j=0;j<entries.length;j++){
+      var e=entries[j];
+      if(!e.slapp||e.upptag||e.avslut||e.sokSlut||now-e.slapp>12*H)continue;
+      var max=e.sokMax||SOK_GRUND;
+      if(now<e.slapp+max)continue;
+      if(max>SOK_GRUND){e.sokSlut=e.slapp+max;persist();showNotice('Söktiden för '+e.namn+' är slut (5 timmar).');refreshView();continue}
+      askSok(e);return;
+    }
+  }
+  setInterval(checkDialogs,1000);
   $('tb-tillbaka').addEventListener('click',function(){if(saveTbStart())openAlg()});
   $('tb-avbryt').addEventListener('click',function(){
     if(!tbSure){tbSure=true;$('tb-avbryt').textContent='Bekräfta: avbryt traktbyte';return}
@@ -1032,12 +1317,13 @@ dl.detail a{color:var(--accent);font-weight:600}
     $('anm-err').hidden=true;
     $('anm').hidden=false;
     document.querySelector('main').inert=true;$('anm-knapp').inert=true;
-    renderAnm();$('anm-text').focus();
+    renderAnm();$('anm-text').focus();saveUi();
   }
   function closeAnm(){
     $('anm').hidden=true;
     document.querySelector('main').inert=false;$('anm-knapp').inert=false;
     if(anmFocus&&anmFocus.focus)anmFocus.focus();
+    saveUi();checkDialogs();
   }
   function renderAnm(){
     var l=anmArr().slice().sort(function(a,b){return b.tid-a.tid});
@@ -1085,7 +1371,7 @@ dl.detail a{color:var(--accent);font-weight:600}
     return f;
   }
   $('anm-knapp').addEventListener('click',openAnm);
-  $('anm-text').addEventListener('input',function(){$('anm-err').hidden=true});
+  $('anm-text').addEventListener('input',function(){$('anm-err').hidden=true;saveUi()});
   $('anm-stang').addEventListener('click',closeAnm);
   $('anm').addEventListener('click',function(e){if(e.target===$('anm'))closeAnm()});
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('anm').hidden)closeAnm()});
@@ -1188,6 +1474,10 @@ dl.detail a{color:var(--accent);font-weight:600}
         arr.forEach(function(e){
           if(!e||typeof e.datum!=='string'||typeof e.namn!=='string')return;
           var it={id:e.datum,namn:e.namn,reg:String(e.reg||''),chip:String(e.chip||''),datum:e.datum,tid:String(e.tid||''),plats:String(e.plats||''),pejl:String(e.pejl||''),idk:!!e.idk,slapp:typeof e.slapp==='number'?e.slapp:null,inkallning:String(e.inkallning||''),upptag:(e.upptag&&typeof e.upptag==='object')?e.upptag:null,alg:Array.isArray(e.alg)?e.alg:[],skall:Array.isArray(e.skall)?e.skall:[],nyaUpptag:Array.isArray(e.nyaUpptag)?e.nyaUpptag:[],kontakt:Array.isArray(e.kontakt)?e.kontakt:[],inkall:Array.isArray(e.inkall)?e.inkall:[],stotning:Array.isArray(e.stotning)?e.stotning:[],agare:String(e.agare||''),tel:String(e.tel||''),info:(e.info&&typeof e.info==='object')?e.info:null,anteckningar:Array.isArray(e.anteckningar)?e.anteckningar:[],turer:Array.isArray(e.turer)?e.turer:[]};
+          if(typeof e.avslut==='number')it.avslut=e.avslut;
+          if(typeof e.sokMax==='number')it.sokMax=e.sokMax;
+          if(typeof e.sokSlut==='number')it.sokSlut=e.sokSlut;
+          it.hkontakt=Array.isArray(e.hkontakt)?e.hkontakt:[];
           var had=entries.some(function(x){return x.id===it.id});
           entries=entries.filter(function(x){return x.id!==it.id}).concat([it]);
           if(had)replaced++;else added++;
@@ -1217,11 +1507,12 @@ dl.detail a{color:var(--accent);font-weight:600}
     persist();renderList();view('lista');
   });
 
-  if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
   load();
   if(!storageOK)showNotice('Lagring i telefonen är inte tillgänglig här. Uppgifterna försvinner när sidan stängs.');
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-  renderList();view('lista');
+  renderList();
+  if(!restoreUi())view('lista');
+  checkDialogs();
 })();
 </script>
 </body>
