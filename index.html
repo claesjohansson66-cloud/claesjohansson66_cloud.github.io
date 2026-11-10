@@ -111,6 +111,7 @@ dl.detail a{color:var(--accent);font-weight:600}
       <button type="button" class="primary" id="ny" style="width:100%">Lägg till prov</button>
       <div class="actions" style="margin-top:16px"><button type="button" class="grow" id="exportera">Spara säkerhetskopia</button><button type="button" class="grow" id="importera">Läs in säkerhetskopia</button></div>
       <input type="file" id="fil" accept="application/json,.json" hidden>
+      <p class="hint" id="version" style="text-align:center;margin-top:20px">Version 2026-11-10</p>
     </section>
 
     <!-- Detalj -->
@@ -1513,6 +1514,26 @@ dl.detail a{color:var(--accent);font-weight:600}
   renderList();
   if(!restoreUi())view('lista');
   checkDialogs();
+
+  /* ---------- Offline + automatisk uppdatering (service worker) ----------
+     sw.js hämtar alltid senaste versionen när det finns uppkoppling
+     och använder sparad kopia när telefonen saknar täckning. */
+  try{
+    if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+      var sw=navigator.serviceWorker,hadCtrl=!!sw.controller,reloaded=false;
+      sw.addEventListener('controllerchange',function(){
+        if(!hadCtrl||reloaded)return;   // första installationen: ingen omladdning behövs
+        reloaded=true;saveUi();location.reload();
+      });
+      var reg=function(){
+        sw.register('./sw.js',{updateViaCache:'none'}).then(function(r){
+          r.update().catch(function(){});
+          document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')r.update().catch(function(){})});
+        }).catch(function(){});
+      };
+      if(document.readyState==='complete')reg();else window.addEventListener('load',reg);
+    }
+  }catch(e){}
 })();
 </script>
 </body>
