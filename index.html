@@ -66,7 +66,9 @@ button.big{width:100%;min-height:72px;font-size:1.3rem;font-weight:800;margin-bo
 ul.turer{list-style:none;margin:0 0 16px;padding:0}
 ul.turer li{border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
 ul.turer h3{margin:0 0 8px;font-size:1.05rem}
-ul.turer dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0 0 10px}
+ul.turer li.k-anm{border-left:4px solid var(--accent)}
+ul.turer li.k-status h3 .typ,ul.turer li.k-anm h3 .typ{display:block;font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+ul.turer dl{display:grid;grid-template-columns:fit-content(62%) 1fr;gap:4px 16px;margin:0 0 10px}
 ul.turer dt{color:var(--muted)}
 ul.turer dd{margin:0;font-weight:600}
 .pagar{color:var(--accent);font-weight:600}
@@ -111,7 +113,7 @@ dl.detail a{color:var(--accent);font-weight:600}
       <button type="button" class="primary" id="ny" style="width:100%">Lägg till prov</button>
       <div class="actions" style="margin-top:16px"><button type="button" class="grow" id="exportera">Spara säkerhetskopia</button><button type="button" class="grow" id="importera">Läs in säkerhetskopia</button></div>
       <input type="file" id="fil" accept="application/json,.json" hidden>
-      <p class="hint" id="version" style="text-align:center;margin-top:20px">Version 2026-11-10</p>
+      <p class="hint" id="version" style="text-align:center;margin-top:20px">Version 2026-11-13</p>
     </section>
 
     <!-- Detalj -->
@@ -173,21 +175,10 @@ dl.detail a{color:var(--accent);font-weight:600}
         <p id="avslut-text" style="margin:0 0 10px;font-weight:600"></p>
         <button type="button" class="danger" id="avslut-angra">Ångra avslut</button>
       </div>
-      <h2 class="sub">Perioder</h2>
+      <h2 class="sub">Händelser</h2>
+      <p class="hint" style="margin:-4px 0 10px">Senaste överst. Anteckningar visas där de gjordes.</p>
       <ul class="turer" id="alg-lista"></ul>
       <p class="empty" id="alg-tom">Ingen status vald ännu. Välj status i listan ovan.</p>
-      <h2 class="sub" id="h-stotning" hidden>Stötningar</h2>
-      <ul class="turer" id="stotning-lista"></ul>
-      <h2 class="sub" id="h-kontakt" hidden>Älgkontakt / skottillfälle</h2>
-      <ul class="turer" id="kontakt-lista"></ul>
-      <h2 class="sub" id="h-inkall" hidden>Inkallning under älgarbete</h2>
-      <ul class="turer" id="inkall-lista"></ul>
-      <h2 class="sub" id="h-hkontakt" hidden>Hunden tar kontakt</h2>
-      <ul class="turer" id="hkontakt-lista"></ul>
-      <h2 class="sub" id="h-skall" hidden>Skallräkningar</h2>
-      <ul class="turer" id="skall-lista"></ul>
-      <h2 class="sub">Upptag</h2>
-      <ul class="turer" id="upptag-lista"></ul>
       <div class="actions"><button type="button" id="alg-info">Provinformation</button><button type="button" id="alg-tillbaka">Tillbaka till provet</button></div>
     </section>
 
@@ -607,7 +598,8 @@ dl.detail a{color:var(--accent);font-weight:600}
     $('ut-in').hidden=!(o||sokOk);$('upptag-knapp').hidden=!o;$('upptag-knapp').textContent='Upptag';$('sok-alg').hidden=!upp;$('sok-alg').textContent='Till älgarbete'+(ac?' · status: '+ac.typ:'');
     tick();
     var list=sorted(),ul=$('turer');ul.textContent='';
-    $('inga-turer').hidden=list.length>0;
+    var flow=[],notes=noteItems('sok',renderSok);
+    $('inga-turer').hidden=list.length>0||notes.length>0;
 
     var done=list.filter(function(t){return t.in!=null});
     var sm=$('summa');
@@ -618,7 +610,7 @@ dl.detail a{color:var(--accent);font-weight:600}
       sm.hidden=false;
     }else sm.hidden=true;
 
-    list.map(function(t,i){return{t:t,n:i+1}}).reverse().forEach(function(x){
+    list.map(function(t,i){return{t:t,n:i+1}}).forEach(function(x){
       var t=x.t,li=mk('li');
       li.appendChild(mk('h3',null,'Tur '+x.n));
       if(editingTur===t.id){li.appendChild(editForm(t))}
@@ -639,8 +631,9 @@ dl.detail a{color:var(--accent);font-weight:600}
         bt.addEventListener('click',function(){editingTur=t.id;renderSok()});
         li.appendChild(bt);
       }
-      ul.appendChild(li);
+      flow.push({t:t.ut,q:seqOf(t),li:li});
     });
+    sortFlow(flow.concat(notes)).forEach(function(x){ul.appendChild(x.li)});
   }
 
   function renderSlapp(){
@@ -898,12 +891,11 @@ dl.detail a{color:var(--accent);font-weight:600}
     $('avslut-box').hidden=!done;
     avSure=false;$('avslut-angra').textContent='Ångra avslut';
 
-    /* Perioder */
-    var ul=$('alg-lista');ul.textContent='';
-    $('alg-tom').hidden=l.length>0;
-    l.map(function(s,i){return{s:s,end:l[i+1]?l[i+1].start:(current.avslut||null)}}).reverse().forEach(function(x){
-      var s=x.s,li=mk('li');
-      li.appendChild(mk('h3',null,s.typ));
+    /* Ett gemensamt flöde: perioder, händelser, upptag och anteckningar */
+    var flow=[];
+    l.map(function(s,i){return{s:s,end:l[i+1]?l[i+1].start:(current.avslut||null)}}).forEach(function(x){
+      var s=x.s,li=mk('li',{class:'k-status'});
+      var h=mk('h3');h.appendChild(mk('span',{class:'typ'},'Status'));h.appendChild(document.createTextNode(s.typ));li.appendChild(h);
       if(editingAlg===s.id){li.appendChild(algForm(s))}
       else{
         var dl=mk('dl');
@@ -914,17 +906,15 @@ dl.detail a{color:var(--accent);font-weight:600}
         bt.addEventListener('click',function(){editingAlg=s.id;renderAlg()});
         li.appendChild(bt);
       }
-      ul.appendChild(li);
+      flow.push({t:s.start,q:seqOf(s),li:li});
     });
 
-    EVT.forEach(renderEvt);
+    EVT.forEach(function(c){flow=flow.concat(renderEvt(c))});
 
-    /* Upptag */
-    var ups=[{n:1,tid:current.upptag.tid,avst:current.upptag.avst,grupp:current.upptag.grupp,hor:current.upptag.horbart,open:openUpptag}];
+    var ups=[{n:1,tid:current.upptag.tid,avst:current.upptag.avst,grupp:current.upptag.grupp,hor:current.upptag.horbart,q:0,open:openUpptag}];
     (current.nyaUpptag||[]).slice().sort(function(a,b){return a.tid-b.tid}).forEach(function(r,i){
-      ups.push({n:i+2,tid:r.tid,avst:r.avst,grupp:r.grupp,hor:r.horbart,open:function(){openNyup(r.id)}});
+      ups.push({n:i+2,tid:r.tid,avst:r.avst,grupp:r.grupp,hor:r.horbart,q:seqOf(r),open:function(){openNyup(r.id)}});
     });
-    var uu=$('upptag-lista');uu.textContent='';
     ups.forEach(function(u){
       var li=mk('li');li.appendChild(mk('h3',null,'Upptag '+u.n));
       var dl=mk('dl');
@@ -932,8 +922,14 @@ dl.detail a{color:var(--accent);font-weight:600}
       li.appendChild(dl);
       var bt=mk('button',{type:'button'},'Redigera');
       bt.addEventListener('click',u.open);
-      li.appendChild(bt);uu.appendChild(li);
+      li.appendChild(bt);
+      flow.push({t:u.tid,q:u.q,li:li});
     });
+
+    flow=flow.concat(noteItems('alg',renderAlg));
+    var ul=$('alg-lista');ul.textContent='';
+    $('alg-tom').hidden=flow.length>0;
+    sortFlow(flow).forEach(function(x){ul.appendChild(x.li)});
     tickAlg();
   }
   function algForm(s){
@@ -991,10 +987,8 @@ dl.detail a{color:var(--accent);font-weight:600}
   function evtList(c){if(!current[c.key])current[c.key]=[];return current[c.key].slice().sort(function(a,b){return a.tid-b.tid})}
   function removeEvt(c,s){current[c.key]=current[c.key].filter(function(x){return x.id!==s.id});if(c.onRemove)c.onRemove(s)}
   function renderEvt(c){
-    var l=evtList(c);
-    $(c.head).hidden=!l.length;
-    var ul=$(c.ul);ul.textContent='';
-    l.map(function(s,i){return{s:s,n:i+1}}).reverse().forEach(function(x){
+    var l=evtList(c),out=[];
+    l.map(function(s,i){return{s:s,n:i+1}}).forEach(function(x){
       var s=x.s,li=mk('li');
       li.appendChild(mk('h3',null,c.label+' '+x.n));
       if(editingEvt&&editingEvt.key===c.key&&editingEvt.id===s.id){li.appendChild(evtForm(c,s))}
@@ -1007,8 +1001,9 @@ dl.detail a{color:var(--accent);font-weight:600}
         bt.addEventListener('click',function(){editingEvt={key:c.key,id:s.id};renderAlg()});
         li.appendChild(bt);
       }
-      ul.appendChild(li);
+      out.push({t:s.tid,q:seqOf(s),li:li});
     });
+    return out;
   }
   function evtForm(c,s){
     var f=mk('div');
@@ -1302,6 +1297,39 @@ dl.detail a{color:var(--accent);font-weight:600}
   $('alg-knapp').addEventListener('click',openAlg);
   $('alg-tillbaka').addEventListener('click',function(){editingAlg=null;renderDetail();view('detalj')});
 
+  /* ---------- Tidsflöde ---------- */
+  function seqOf(o){if(o&&typeof o.c==='number')return o.c;var m=String(o&&o.id||'').match(/\d{13}/);return m?+m[0]:0}
+  function sortFlow(f){return f.sort(function(a,b){return (b.t-a.t)||(b.q-a.q)})}  // senaste överst
+  var ALGVY=['alg','tb','nyup','upptag'];
+  function notePage(n){
+    if(n.vy==='sok')return 'sok';
+    if(ALGVY.indexOf(n.vy)>=0&&current.upptag)return 'alg';
+    return (current.upptag&&n.tid>=current.upptag.tid)?'alg':'sok';
+  }
+  var editingAnmFlow=null;
+  function noteItems(page,rerender){
+    if(!current)return [];
+    return (current.anteckningar||[]).filter(function(n){return notePage(n)===page}).map(function(n){
+      var li=mk('li',{class:'k-anm'});
+      var h=mk('h3');h.appendChild(mk('span',{class:'typ'},'Anteckning'));h.appendChild(document.createTextNode('kl. '+fmtTid(n.tid)));li.appendChild(h);
+      if(editingAnmFlow===n.id){li.appendChild(anmEditForm(n,function(){editingAnmFlow=null;rerender()}))}
+      else{
+        li.appendChild(mk('p',{class:'notering'},n.text));
+        var bt=mk('button',{type:'button'},'Redigera');
+        bt.addEventListener('click',function(){editingAnmFlow=n.id;rerender()});
+        li.appendChild(bt);
+      }
+      return {t:n.tid,q:seqOf(n),li:li};
+    });
+  }
+  /* Uppdatera flödet bakom anteckningsrutan, om inget formulär är öppet där */
+  function refreshFlow(){
+    if(!current)return;
+    if(curView==='alg'&&!editingAlg&&!editingEvt&&!editingAnmFlow)renderAlg();
+    else if(curView==='sok'&&!editingTur&&!editingSlapp&&!editingAnmFlow)renderSok();
+    else if(curView==='detalj')renderDetail();
+  }
+
   /* ---------- Anteckningar ---------- */
   var anmOpenedAt=0,anmCtx=null,anmFocus=null,anmEditId=null;
   function fmtDT(ms){var d=new Date(rnd(ms));return d.toLocaleDateString('sv-SE',{day:'numeric',month:'long',year:'numeric'})+' kl. '+p(d.getHours())+':'+p(d.getMinutes())}
@@ -1343,10 +1371,14 @@ dl.detail a{color:var(--accent);font-weight:600}
       ul.appendChild(li);
     });
   }
-  function anmEditForm(n){
-    var f=mk('div');
-    f.appendChild(field('Tidpunkt',mk('input',{id:'anm-e-tid',type:'datetime-local',value:toLocalInput(n.tid)})));
-    f.appendChild(field('Anteckning',mk('textarea',{id:'anm-e-text',rows:'4'},n.text)));
+  var anmFormNr=0;
+  function anmEditForm(n,done){
+    if(!done)done=function(){anmEditId=null;renderAnm();refreshFlow()};
+    var f=mk('div'),nr=++anmFormNr;
+    var tidIn=mk('input',{id:'anm-e-tid'+nr,type:'datetime-local',value:toLocalInput(n.tid)});
+    var txtIn=mk('textarea',{id:'anm-e-text'+nr,rows:'4'},n.text);
+    f.appendChild(field('Tidpunkt',tidIn));
+    f.appendChild(field('Anteckning',txtIn));
     var err=mk('p',{class:'err',hidden:''});f.appendChild(err);
     var a=mk('div',{class:'actions'});
     var sv=mk('button',{type:'button',class:'primary grow'},'Spara');
@@ -1355,17 +1387,18 @@ dl.detail a{color:var(--accent);font-weight:600}
     var sure=false;
     function fail(m){err.textContent=m;err.hidden=false}
     sv.addEventListener('click',function(){
-      var v=$('anm-e-tid').value,ms=v?new Date(v).getTime():NaN;
+      var v=tidIn.value,ms=v?new Date(v).getTime():NaN;
       if(isNaN(ms))return fail('Ange datum och tid.');
-      var t=$('anm-e-text').value.trim();
+      var t=txtIn.value.trim();
       if(!t)return fail('Anteckningen kan inte vara tom. Ta bort den i stället.');
-      n.tid=rnd(ms);n.text=t;persist();anmEditId=null;renderAnm();
+      if(rnd(ms)!==n.tid)delete n.vy;   // ny tidpunkt: placeras efter tid
+      n.tid=rnd(ms);n.text=t;persist();done();
     });
-    av.addEventListener('click',function(){anmEditId=null;renderAnm()});
+    av.addEventListener('click',done);
     rm.addEventListener('click',function(){
       if(!sure){sure=true;rm.textContent='Bekräfta borttagning';return}
       anmSet(anmArr().filter(function(x){return x.id!==n.id}));
-      persist();anmEditId=null;renderAnm();
+      persist();done();
       if(current&&!$('v-detalj').hidden)renderDetail();
     });
     a.appendChild(sv);a.appendChild(av);a.appendChild(rm);f.appendChild(a);
@@ -1380,8 +1413,8 @@ dl.detail a{color:var(--accent);font-weight:600}
     var t=$('anm-text').value.trim(),err=$('anm-err');
     if(!t){err.textContent='Skriv en anteckning först.';err.hidden=false;$('anm-text').focus();return}
     err.hidden=true;
-    anmArr().push({id:'x'+Date.now()+Math.floor(Math.random()*1000),tid:rnd(anmOpenedAt),text:t});
-    persist();
+    anmArr().push({id:'x'+Date.now()+Math.floor(Math.random()*1000),tid:rnd(anmOpenedAt),c:anmOpenedAt,vy:curView,text:t});
+    persist();refreshFlow();
     $('anm-text').value='';anmOpenedAt=Date.now();$('anm-ny-tid').textContent=fmtDT(anmOpenedAt);
     renderAnm();
     if(current&&!$('v-detalj').hidden)renderDetail();
