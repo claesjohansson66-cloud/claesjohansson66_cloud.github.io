@@ -94,6 +94,20 @@ dl.detail a{color:var(--accent);font-weight:600}
 .panel{background:var(--surface);color:var(--ink);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px))}
 @media (min-width:600px){.overlay{align-items:center}.panel{border-radius:16px}}
 .panel h2{margin:0;font-size:1.25rem}
+/* Egen tidväljare */
+input.tp-field{cursor:pointer;font-variant-numeric:tabular-nums}
+#tp{z-index:60}
+#tp .panel{max-width:380px;max-height:calc(100dvh - 16px);padding-top:16px}
+.tp-datum{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px}
+.tp-datum span{font-weight:600;text-align:center;flex:1}
+.tp-hjul{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px}
+.tp-kol{display:flex;flex-direction:column;align-items:center;gap:6px}
+.tp-kol button{width:76px;min-height:52px;font-size:1.3rem;padding:0}
+.tp-kol input{width:76px;text-align:center;font-size:2.1rem;font-weight:700;padding:6px 0;min-height:60px;font-variant-numeric:tabular-nums}
+.tp-kolon{font-size:2.1rem;font-weight:700}
+.tp-snabb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px}
+.tp-snabb button{padding:0 6px}
+#tp .actions{flex-wrap:nowrap}#tp .actions .grow{flex:1 1 auto}#tp .actions button{padding:0 14px}
 .panel h3{margin:0 0 8px;font-size:1.05rem}
 .anm-ny{margin:0 0 20px;padding:14px 16px;border:1.5px solid var(--accent);border-radius:10px}
 [hidden]{display:none!important}
@@ -113,7 +127,7 @@ dl.detail a{color:var(--accent);font-weight:600}
       <button type="button" class="primary" id="ny" style="width:100%">Lägg till prov</button>
       <div class="actions" style="margin-top:16px"><button type="button" class="grow" id="exportera">Spara säkerhetskopia</button><button type="button" class="grow" id="importera">Läs in säkerhetskopia</button></div>
       <input type="file" id="fil" accept="application/json,.json" hidden>
-      <p class="hint" id="version" style="text-align:center;margin-top:20px">Version 2026-11-13</p>
+      <p class="hint" id="version" style="text-align:center;margin-top:20px">Version 2026-11-17b</p>
     </section>
 
     <!-- Detalj -->
@@ -355,6 +369,40 @@ dl.detail a{color:var(--accent);font-weight:600}
     </div>
     <ul class="turer" id="anm-lista"></ul>
     <p class="empty" id="anm-tom">Inga anteckningar ännu.</p>
+  </div>
+</div>
+
+<div class="overlay" id="tp" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="tp-rubrik">
+    <h2 id="tp-rubrik" style="margin:0 0 12px">Välj tid</h2>
+    <div class="tp-datum" id="tp-datum" hidden>
+      <button type="button" id="tp-dagd" aria-label="Föregående dag">‹</button>
+      <span id="tp-dagtext"></span>
+      <button type="button" id="tp-dagu" aria-label="Nästa dag">›</button>
+    </div>
+    <div class="tp-hjul">
+      <div class="tp-kol">
+        <button type="button" id="tp-hu" aria-label="En timme senare">▲</button>
+        <input id="tp-h" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Timme">
+        <button type="button" id="tp-hd" aria-label="En timme tidigare">▼</button>
+      </div>
+      <span class="tp-kolon">:</span>
+      <div class="tp-kol">
+        <button type="button" id="tp-mu" aria-label="En minut senare">▲</button>
+        <input id="tp-m" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="Minut">
+        <button type="button" id="tp-md" aria-label="En minut tidigare">▼</button>
+      </div>
+    </div>
+    <div class="tp-snabb">
+      <button type="button" id="tp-m5d">−5 min</button>
+      <button type="button" id="tp-nu">Nu</button>
+      <button type="button" id="tp-m5u">+5 min</button>
+    </div>
+    <div class="actions">
+      <button type="button" class="primary grow" id="tp-ok">Klar</button>
+      <button type="button" id="tp-avbryt">Avbryt</button>
+      <button type="button" class="danger" id="tp-tom">Töm</button>
+    </div>
   </div>
 </div>
 
@@ -1387,7 +1435,7 @@ dl.detail a{color:var(--accent);font-weight:600}
     var sure=false;
     function fail(m){err.textContent=m;err.hidden=false}
     sv.addEventListener('click',function(){
-      var v=tidIn.value,ms=v?new Date(v).getTime():NaN;
+      var v=tidIn.value.replace(' ','T'),ms=v?new Date(v).getTime():NaN;
       if(isNaN(ms))return fail('Ange datum och tid.');
       var t=txtIn.value.trim();
       if(!t)return fail('Anteckningen kan inte vara tom. Ta bort den i stället.');
@@ -1408,16 +1456,18 @@ dl.detail a{color:var(--accent);font-weight:600}
   $('anm-text').addEventListener('input',function(){$('anm-err').hidden=true;saveUi()});
   $('anm-stang').addEventListener('click',closeAnm);
   $('anm').addEventListener('click',function(e){if(e.target===$('anm'))closeAnm()});
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('anm').hidden)closeAnm()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('anm').hidden&&$('tp').hidden)closeAnm()});
   $('anm-spara').addEventListener('click',function(){
     var t=$('anm-text').value.trim(),err=$('anm-err');
     if(!t){err.textContent='Skriv en anteckning först.';err.hidden=false;$('anm-text').focus();return}
     err.hidden=true;
     anmArr().push({id:'x'+Date.now()+Math.floor(Math.random()*1000),tid:rnd(anmOpenedAt),c:anmOpenedAt,vy:curView,text:t});
-    persist();refreshFlow();
-    $('anm-text').value='';anmOpenedAt=Date.now();$('anm-ny-tid').textContent=fmtDT(anmOpenedAt);
-    renderAnm();
-    if(current&&!$('v-detalj').hidden)renderDetail();
+    var y=window.scrollY;
+    persist();
+    $('anm-text').value='';anmOpenedAt=Date.now();
+    closeAnm();   // tillbaka dit man var när man tryckte på Anteckning
+    refreshFlow();
+    window.scrollTo(0,y);
   });
 
   /* ---------- Provinformation ---------- */
@@ -1547,6 +1597,121 @@ dl.detail a{color:var(--accent);font-weight:600}
   renderList();
   if(!restoreUi())view('lista');
   checkDialogs();
+
+  /* ---------- Egen tidväljare ----------
+     Ersätter telefonens inbyggda tidväljare (vars knappar kunde hamna utanför skärmen).
+     Fälten behåller samma värdeformat: "HH:MM" respektive "ÅÅÅÅ-MM-DD HH:MM". */
+  var tpIn=null,tpKind='time',tpDate=null,tpFocus=null;
+  function tpConvert(inp){
+    if(inp.dataset.tp)return;
+    var k=inp.type==='datetime-local'?'dt':(inp.type==='time'?'time':null);if(!k)return;
+    var v=inp.value;
+    inp.type='text';inp.readOnly=true;inp.dataset.tp=k;inp.classList.add('tp-field');
+    inp.setAttribute('inputmode','none');inp.autocomplete='off';
+    inp.placeholder=k==='dt'?'Välj datum och tid':'Välj tid';
+    inp.value=k==='dt'?v.replace('T',' '):v;
+  }
+  function tpScan(root){
+    if(!root.querySelectorAll)return;
+    if(root.matches&&root.matches('input[type=time],input[type=datetime-local]'))tpConvert(root);
+    root.querySelectorAll('input[type=time],input[type=datetime-local]').forEach(tpConvert);
+  }
+  tpScan(document.body);
+  new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(tpScan)})}).observe(document.body,{childList:true,subtree:true});
+  /* Kod som sätter värden med "T" i datum-tid-fält */
+  document.addEventListener('focusin',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.tp==='dt'&&t.value.indexOf('T')>0)t.value=t.value.replace('T',' ')});
+
+  function tpLabel(inp){
+    var l=inp.id?document.querySelector('label[for="'+inp.id+'"]'):null;
+    if(!l)return inp.dataset.tp==='dt'?'Välj datum och tid':'Välj tid';
+    var c=l.cloneNode(true);c.querySelectorAll('.hint').forEach(function(h){h.remove()});
+    return c.textContent.trim()||'Välj tid';
+  }
+  function tpShow(){
+    $('tp-h').value=p(tpDate.getHours());$('tp-m').value=p(tpDate.getMinutes());
+    $('tp-dagtext').textContent=tpDate.toLocaleDateString('sv-SE',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  }
+  function tpRead(){ // läs ev. inskrivna siffror
+    var h=parseInt($('tp-h').value,10),m=parseInt($('tp-m').value,10);
+    if(!isNaN(h))tpDate.setHours(Math.min(23,Math.max(0,h)));
+    if(!isNaN(m))tpDate.setMinutes(Math.min(59,Math.max(0,m)));
+  }
+  function tpAdd(min){
+    tpRead();
+    if(tpKind==='time'){ // stanna inom samma dygn, gå runt vid midnatt
+      var tot=((tpDate.getHours()*60+tpDate.getMinutes()+min)%1440+1440)%1440;
+      tpDate.setHours(Math.floor(tot/60),tot%60,0,0);
+    }else tpDate=new Date(tpDate.getTime()+min*60000);
+    tpShow();
+  }
+  function tpOpen(inp){
+    tpIn=inp;tpKind=inp.dataset.tp;tpFocus=inp;
+    var v=inp.value.trim(),d=new Date();d.setSeconds(0,0);
+    if(tpKind==='time'){var m=v.match(/^(\d{1,2}):(\d{2})/);if(m)d.setHours(+m[1],+m[2],0,0)}
+    else if(v){var x=new Date(v.replace(' ','T'));if(!isNaN(x))d=x}
+    tpDate=d;
+    $('tp-rubrik').textContent=tpLabel(inp);
+    $('tp-datum').hidden=tpKind!=='dt';
+    tpShow();
+    $('tp').hidden=false;
+    document.querySelector('main').inert=true;$('anm-knapp').inert=true;
+  }
+  function tpClose(){
+    $('tp').hidden=true;
+    var anmOpen=!$('anm').hidden,dlgOn=!$('dlg').hidden;
+    if(!anmOpen&&!dlgOn){document.querySelector('main').inert=false;$('anm-knapp').inert=false}
+    if(tpFocus&&document.contains(tpFocus))try{tpFocus.focus({preventScroll:true})}catch(e){}
+    tpIn=null;
+  }
+  function tpSet(val){
+    if(!tpIn)return;
+    tpIn.value=val;
+    tpIn.dispatchEvent(new Event('input',{bubbles:true}));
+    tpIn.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  document.addEventListener('click',function(e){
+    var t=e.target;
+    if(t&&t.dataset&&t.dataset.tp&&!t.disabled){e.preventDefault();tpOpen(t)}
+  });
+  document.addEventListener('keydown',function(e){
+    var t=e.target;
+    if(t&&t.dataset&&t.dataset.tp&&(e.key==='Enter'||e.key===' ')){e.preventDefault();tpOpen(t)}
+    if(e.key==='Escape'&&!$('tp').hidden)tpClose();
+  });
+  /* Knappar som upprepas när man håller inne dem */
+  function tpHold(id,fn){
+    var b=$(id),t1=null,t2=null;
+    function stop(){clearTimeout(t1);clearInterval(t2)}
+    b.addEventListener('pointerdown',function(e){e.preventDefault();fn();t1=setTimeout(function(){t2=setInterval(fn,90)},450)});
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){b.addEventListener(ev,stop)});
+    b.addEventListener('click',function(e){if(e.detail===0)fn()}); // tangentbord
+  }
+  tpHold('tp-hu',function(){tpAdd(60)});tpHold('tp-hd',function(){tpAdd(-60)});
+  tpHold('tp-mu',function(){tpAdd(1)});tpHold('tp-md',function(){tpAdd(-1)});
+  tpHold('tp-dagu',function(){tpAdd(1440)});tpHold('tp-dagd',function(){tpAdd(-1440)});
+  $('tp-m5u').addEventListener('click',function(){tpAdd(5)});
+  $('tp-m5d').addEventListener('click',function(){tpAdd(-5)});
+  $('tp-nu').addEventListener('click',function(){
+    var n=new Date();n.setSeconds(0,0);
+    if(tpKind==='time')tpDate.setHours(n.getHours(),n.getMinutes(),0,0);else tpDate=n;
+    tpShow();
+  });
+  ['tp-h','tp-m'].forEach(function(id){
+    var el=$(id);
+    el.addEventListener('focus',function(){el.select()});
+    el.addEventListener('input',function(){el.value=el.value.replace(/\D/g,'').slice(0,2);if(id==='tp-h'&&el.value.length===2)$('tp-m').focus()});
+    el.addEventListener('blur',function(){tpRead();tpShow()});
+    el.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('tp-ok').click()}});
+  });
+  $('tp-ok').addEventListener('click',function(){
+    tpRead();
+    var hm=p(tpDate.getHours())+':'+p(tpDate.getMinutes());
+    tpSet(tpKind==='dt'?tpDate.getFullYear()+'-'+p(tpDate.getMonth()+1)+'-'+p(tpDate.getDate())+' '+hm:hm);
+    tpClose();
+  });
+  $('tp-avbryt').addEventListener('click',tpClose);
+  $('tp-tom').addEventListener('click',function(){tpSet('');tpClose()});
+  $('tp').addEventListener('click',function(e){if(e.target===$('tp'))tpClose()});
 
   /* ---------- Offline + automatisk uppdatering (service worker) ----------
      sw.js hämtar alltid senaste versionen när det finns uppkoppling
